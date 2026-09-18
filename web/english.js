@@ -1,4 +1,9 @@
 window.HermesEnglish={
+"项目文件":"Project files",
+"返回对话":"Back to conversation",
+"保存到当前项目":"Save to this project",
+"<p>本次回复没有可归档文件。NAS 路径不会自动导入。</p>":"<p>This reply contains no deliverable files. NAS paths are not imported automatically.</p>",
+"预览并归档项目文件":"Preview and save project files",
 "个人设置":"Personal settings","账户安全":"Account security","账号来源":"Account source","应用账号验证":"Application account service","修改密码与找回密码":"Password changes and recovery","需联系账号服务管理员":"Contact your account service administrator","外观与语言":"Appearance and language","偏好设置":"Preferences","退出其他会话":"Sign out other sessions","此处仅管理工作台登录，不会停止远端 Hermes 任务。":"Manages workbench sessions only. Remote Hermes tasks will not stop.","此处仅管理工作台登录，不会停止远端 ":"Manages workbench sessions only. Remote ","任务。":"tasks will not stop.","重命名设备":"Rename device","退出其他所有工作台会话？当前会话保留，远端任务不会停止。":"Sign out all other workbench sessions? This session stays active; remote tasks will not stop.","其他会话已退出":"Other sessions signed out","撤销这个工作台会话？远端任务不会停止。":"Revoke this workbench session? Remote tasks will not stop.","退出会丢失未发送的消息和附件，继续？":"Signing out discards unsent messages and attachments. Continue?","设备名称已更新":"Device name updated",
 "外部 Agent":"External agents","外部 ":"External ","开始独立的环境检查对话？未发送的消息和附件将被清除。":"Start an independent environment check? Unsent messages and attachments will be cleared.",
 "检查服务器":"Check server","执行环境":"Execution environment","当前服务器未接入外部 ":"This server has no external ","管理，无法核验安装、版本或登录状态。":"management API; installation, versions and authentication cannot be verified.",

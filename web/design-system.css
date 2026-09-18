@@ -49,6 +49,10 @@ dialog{color:var(--ink);background:var(--surface);border:1px solid var(--line);b
 .project-operation-list article{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .project-operation-list strong{font-size:13px;overflow-wrap:anywhere}.project-operation-list small,.project-operation-list time{grid-column:2;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
 .project-operation-list .operation-before{grid-column:1/-1;font-size:12px;overflow-wrap:anywhere;border-top:1px solid var(--line);padding-top:8px;margin:0}
+.project-file-list article{grid-template-columns:minmax(0,1fr) auto}
+.project-file-list small{white-space:nowrap;align-self:center}
+.project-file-list .project-context-preview{grid-column:1/-1;min-width:0;margin:0;max-height:240px}
+.project-file-list button{grid-column:1/-1;justify-self:end;min-height:36px}
 .project-action-receipt{display:flex;align-items:center;gap:10px;width:100%;padding:14px;margin-top:12px;text-align:left;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px;color:var(--ink)}
 .project-action-receipt svg{width:17px;height:17px;color:var(--success)}.project-action-receipt span{flex:1}.project-action-receipt:hover{border-color:var(--accent)}
 .body-layout.chat-page>.content{display:none!important}

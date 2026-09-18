@@ -18,6 +18,7 @@ import { localizedSource } from './localize.mjs';
 import {profileName,profileInput} from './profiles.mjs';
 import {projectChat,accessSchema} from './project-chat.mjs';
 import {workbenchActions} from './workbench-actions.mjs';
+import {projectFiles} from './project-files.mjs';
 
 const credentials = z.object({ username: z.string().trim().min(1).max(100), password: z.string().min(1).max(256), device: z.string().trim().min(1).max(80).default('Browser') }).strict();
 const registration = z.object({ username: z.string().regex(/^[A-Za-z0-9_]{5,11}$/), password: z.string().regex(/^[A-Za-z0-9.*_-]{6,18}$/),
@@ -32,6 +33,7 @@ export async function createApp(config, adapters = {}) {
   const auth = adapters.auth || authAdapter(config), hermes = hermesAdapter(config, store, secrets, adapters.hermesTransport);
   const runs = runService(config, store, hermes, adapters.gateway);
   const documents = documentService(store);
+  const files=projectFiles(store);
   const projects=projectService(store);
   const taskImports=taskImportService(store);
   const projectChats=projectChat(store),actions=workbenchActions(store);
@@ -155,6 +157,11 @@ export async function createApp(config, adapters = {}) {
     return hermes.manage(req.session.owner,input);
   });
   app.get('/api/documents',async req=>documents.list(req.session.owner));
+  app.get('/api/runs/:id/files',async req=>files.list(req.session.owner,z.uuid().parse(req.params.id)));
+  app.post('/api/runs/:id/files/:index',async req=>{
+    z.object({confirm:z.literal(true)}).strict().parse(req.body);
+    return files.save(req.session.owner,z.uuid().parse(req.params.id),z.coerce.number().int().min(0).max(4).parse(req.params.index));
+  });
   app.get('/api/documents/:id',async req=>documents.get(req.session.owner,z.uuid().parse(req.params.id)));
   app.get('/api/documents/:id/versions',async req=>documents.versions(req.session.owner,z.uuid().parse(req.params.id)));
   app.get('/api/documents/:id/versions/:version',async req=>documents.get(req.session.owner,z.uuid().parse(req.params.id),z.coerce.number().int().positive().parse(req.params.version)));

@@ -36,5 +36,36 @@ window.HermesProjectChat=(()=>{
  function welcome(id){const root=document.querySelector('.chat-welcome'),project=window.HermesProjects.overview().find(p=>p.id===id);if(!root||!project)return;root.classList.add('project-welcome');root.innerHTML=`<span class="project-welcome-symbol">${i('folder-kanban')}</span><h3>${e(project.name)}</h3><p>${project.completed} / ${project.total} ${e('任务完成')}</p><div class="project-chat-prompts"><button data-project-prompt="progress">${i('chart-no-axes-combined')}检查项目进度${i('arrow-up-right')}</button><button data-project-prompt="plan">${i('calendar-plus')}安排下一步${i('arrow-up-right')}</button></div>`;}
  document.addEventListener('click',event=>{const button=event.target.closest('[data-project-prompt]');if(button)window.HermesChat.draftMessage(button.dataset.projectPrompt==='progress'?'根据已授权的项目上下文总结当前进度，指出尚未完成的事项。不要修改任务。':'请为当前项目提出下一步任务；需要写入时使用工作台结构化任务指令，不要擅自安排日期。');});
  document.addEventListener('click',event=>{const button=event.target.closest('[data-project-chat],[data-project-policy],[data-project-actions]');if(!button||button.disabled)return;if(button.hasAttribute('data-project-chat'))void choose(button.dataset.projectChat);else if(button.dataset.projectPolicy)void policy(button.dataset.projectPolicy);else void review(button.dataset.projectActions);});
- return {configure:c=>context=c,reset,bar,choose,decorate,welcome};
+ async function reviewFiles(id){
+  const version=modal('项目文件');
+  try{
+   const data=await context.api(`/runs/${id}/files`);if(version!==epoch)return;
+   dialog.querySelector('.project-chat-body').innerHTML=`<div class="project-operation-list">${data.files.map(f=>`<article><strong>${e(f.name)}</strong><small>${f.bytes.toLocaleString()} B</small><pre class="project-context-preview"><code>${e(f.content)}</code></pre><button class="secondary" data-project-file-save="${f.index}" ${f.saved?'disabled':''}>${f.saved?'已归档':'保存到当前项目'}</button></article>`).join('')||'<p>本次回复没有可归档文件。NAS 路径不会自动导入。</p>'}</div><div class="form-actions"><button type="button" class="secondary" data-project-chat-close>返回对话</button></div>`;
+   dialog.querySelector('.project-operation-list').classList.add('project-file-list');
+   dialog.querySelectorAll('[data-project-file-save]').forEach(button=>button.addEventListener('click',async()=>{
+    button.disabled=true;
+    try{
+     await context.api(`/runs/${id}/files/${button.dataset.projectFileSave}`,{method:'POST',body:{confirm:true}});
+     if(version!==epoch)return;
+     button.textContent='已归档';
+     await context.refresh();context.changed();
+    }catch(cause){if(version===epoch){button.disabled=false;error(cause.message);}}
+   }));
+  }catch(cause){if(version===epoch)error(cause.message);}
+ }
+ function decorateFiles(timeline){
+  decorate(timeline);
+  for(const run of timeline){
+   if(run.status!=='completed'||!run.projectId)continue;
+   const article=document.querySelector(`[data-output="${run.id}"]`)?.closest('.chat-turn');
+   if(!article||article.querySelector('[data-project-files]'))continue;
+   const blocks=window.marked.lexer(run.output||'').filter(token=>token.type==='code'&&token.lang==='hermes-files');
+   if(!blocks.length)continue;
+   article.querySelectorAll('.chat-output pre code').forEach(code=>{if(blocks.some(block=>block.text.trim()===code.textContent.trim()))code.parentElement.hidden=true;});
+   const button=document.createElement('button');button.className='project-action-receipt';button.dataset.projectFiles=run.id;
+   button.innerHTML=`${i('files')}<span>预览并归档项目文件</span>${i('chevron-right')}`;article.append(button);
+  }
+ }
+ document.addEventListener('click',event=>{const button=event.target.closest('[data-project-files]');if(button)void reviewFiles(button.dataset.projectFiles);});
+ return {configure:c=>context=c,reset,bar,choose,decorate:decorateFiles,welcome};
 })();

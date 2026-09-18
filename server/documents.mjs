@@ -27,15 +27,16 @@ export function documentService(store){
         store.db.exec('COMMIT');return {purged:true};
       }catch(error){if(store.db.isTransaction)store.db.exec('ROLLBACK');throw error;}
     },
-    save(owner,key,raw){
+    save(owner,key,raw,{projectId=null}={}){
       const input=documentSchema.parse(raw);validateAttachments([{name:input.name,content:input.content}]);
-      const fingerprint=hash(JSON.stringify(input));
+      const fingerprint=hash(JSON.stringify(projectId?{...input,projectId}:input));
       store.db.exec('BEGIN IMMEDIATE');
       try{
         const existing=store.one('SELECT version,purged FROM documents WHERE owner=? AND id=?',owner,input.id);
         if(existing?.purged)throw new Fault(404,'DOCUMENT_NOT_FOUND','Document permanently removed');
         const prior=store.one('SELECT fingerprint,result FROM document_mutations WHERE owner=? AND key=?',owner,key);
         if(prior){if(prior.fingerprint!==fingerprint)throw new Fault(409,'IDEMPOTENCY_CONFLICT','Request key already used');store.db.exec('COMMIT');return {...input,...JSON.parse(prior.result)};}
+        if(projectId&&!store.one('SELECT id FROM projects WHERE owner=? AND id=? AND archived=0',owner,projectId))throw new Fault(409,'PROJECT_UNAVAILABLE','Project unavailable');
         if((existing?.version||0)!==input.version)throw new Fault(409,'DOCUMENT_CONFLICT','Document changed on another device');
         if(!existing&&input.deleted)throw new Fault(404,'DOCUMENT_NOT_FOUND','Document not found');
         if(!existing&&store.one('SELECT COUNT(*) AS count FROM documents WHERE owner=? AND purged=0',owner).count>=200)throw new Fault(409,'DOCUMENT_QUOTA','Document count quota reached');
@@ -45,6 +46,10 @@ export function documentService(store){
         store.run('DELETE FROM document_versions WHERE owner=? AND id=? AND version<=?',owner,input.id,result.version-20);
         if(store.one('SELECT COALESCE(SUM(bytes),0) AS bytes FROM document_versions WHERE owner=?',owner).bytes>LIMIT)throw new Fault(409,'DOCUMENT_QUOTA','Document storage quota reached');
         store.run('INSERT INTO document_mutations VALUES(?,?,?,?)',owner,key,fingerprint,JSON.stringify(result));
+        if(projectId){
+          store.run("INSERT INTO project_links VALUES(?,?,'document',?)",owner,projectId,input.id);
+          store.run('UPDATE projects SET version=version+1,updated=? WHERE owner=? AND id=?',Date.now(),owner,projectId);
+        }
         store.db.exec('COMMIT');return {...input,...result};
       }catch(error){if(store.db.isTransaction)store.db.exec('ROLLBACK');throw error;}
     }

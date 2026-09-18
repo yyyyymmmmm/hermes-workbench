@@ -4,6 +4,7 @@ import { openGateway } from './gateway.mjs';
 import { validateAttachments,attachedPrompt } from './attachments.mjs';
 import {projectChat,projectPrompt} from './project-chat.mjs';
 import {workbenchActions} from './workbench-actions.mjs';
+import {filePrompt} from './project-files.mjs';
 
 const activeStates = ['queued', 'running', 'approval', 'stopping', 'unknown'];
 const text = (value, length = 8000) => typeof value === 'string' ? value.slice(0, length) : '';
@@ -121,7 +122,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
       status(row.id,'running');
       const attachments=store.all('SELECT name,content FROM run_attachments WHERE run_id=? ORDER BY position',row.id);
       const mode=row.agent_mode?'\n\n[Workbench collaboration preference for this turn]\nUse the native delegate_task tool when independent subtasks benefit from parallel specialists. Choose appropriate roles (research, implementation, review), provide each child only the authorized context needed, avoid concurrent edits to the same files, and synthesize verified results. Simple tasks do not require delegation. Respect remote concurrency and cost limits and all existing approvals. Do not claim delegation without a real tool call. Report unfinished background work explicitly; do not claim it is complete. Only the parent proposes workbench task mutations. This preference does not grant additional permissions.\n':'';
-      await handle.client.rpc('prompt.submit', { session_id:handle.runtime, profile:agentProfile, text:attachedPrompt(row.prompt,attachments)+projectPrompt(row.project_context?JSON.parse(row.project_context):null)+mode });
+      await handle.client.rpc('prompt.submit', { session_id:handle.runtime, profile:agentProfile, text:attachedPrompt(row.prompt,attachments)+projectPrompt(row.project_context?JSON.parse(row.project_context):null)+(row.project_context?filePrompt:'')+mode });
       if (handle.stop && !handle.finished) await handle.client.rpc('session.interrupt',{session_id:handle.runtime,profile:agentProfile});
     } catch (error) {
       if (!handle.finished) finish(row.id, handle.submitted && error.code !== 'GATEWAY_REJECTED' ? 'unknown' : 'failed', error.code || 'RUN_FAILED');
