@@ -1,0 +1,58 @@
+name: Mobile Preview
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run sync:android
+        working-directory: mobile
+      - run: bash gradlew assembleDebug --no-daemon
+        working-directory: mobile/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hermes-android-debug
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+        working-directory: mobile
+      - run: npm run sync:ios
+        working-directory: mobile
+      - run: xcodebuild -project App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+        working-directory: mobile/ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hermes-ios-simulator
+          path: mobile/ios/build/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
+          retention-days: 7

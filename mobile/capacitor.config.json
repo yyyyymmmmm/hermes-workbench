@@ -1,0 +1,6 @@
+{
+  "appId": "site.hermes.workbench",
+  "appName": "Hermes Workbench",
+  "webDir": "www",
+  "server": {"androidScheme": "https"}
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hermes Workbench</string>
+    <string name="title_activity_main">Hermes Workbench</string>
+    <string name="package_name">site.hermes.workbench</string>
+    <string name="custom_url_scheme">site.hermes.workbench</string>
+</resources>
