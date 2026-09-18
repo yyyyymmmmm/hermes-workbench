@@ -24,6 +24,9 @@ jobs:
       - run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
       - run: npm ci
         working-directory: mobile
+      - run: npm ci
+      - run: npm run build:web
+        working-directory: mobile
       - run: npm run sync:android
         working-directory: mobile
       - run: bash gradlew testDebugUnitTest assembleDebug --no-daemon
@@ -45,6 +48,9 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
+        working-directory: mobile
+      - run: npm ci
+      - run: npm run build:web
         working-directory: mobile
       - run: npm run sync:ios
         working-directory: mobile

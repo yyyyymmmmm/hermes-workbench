@@ -11,6 +11,7 @@ import java.net.URI;
 import androidx.activity.ComponentActivity;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
+import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import android.provider.CalendarContract;
@@ -24,6 +25,8 @@ public class MainActivity extends ComponentActivity {
     private Consumer<JSONObject> calendarReply;
     private boolean nativeBusy;
     private int documentGeneration;
+    private static final String LOCAL="https://appassets.androidplatform.net";
+    private WorkspaceHttp http;
     private String label(String en, String zh) { return english ? en : zh; }
 
     @Override public void onCreate(Bundle saved) {
@@ -51,7 +54,14 @@ public class MainActivity extends ComponentActivity {
         web.getSettings().setAllowContentAccess(false);
         web.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+        WebViewAssetLoader loader=new WebViewAssetLoader.Builder().addPathHandler("/",path->{
+            try{String name=path.isEmpty()?"index.html":path;if(name.contains("..")||!name.matches("[A-Za-z0-9/_\\.-]+"))return null;
+                String mime=name.endsWith(".js")?"application/javascript":name.endsWith(".css")?"text/css":name.endsWith(".jpg")?"image/jpeg":name.endsWith(".json")?"application/json":"text/html";
+                return new WebResourceResponse(mime,"UTF-8",getAssets().open("public/"+name));
+            }catch(Exception e){return new WebResourceResponse("text/plain","UTF-8",404,"Not Found",java.util.Collections.emptyMap(),new java.io.ByteArrayInputStream(new byte[0]));}
+        }).build();
         web.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return loader.shouldInterceptRequest(request.getUrl());}
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) { documentGeneration++; }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
@@ -73,10 +83,11 @@ public class MainActivity extends ComponentActivity {
         layout.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(layout);
         origin = getPreferences(MODE_PRIVATE).getString("origin", "");
-        if (origin.isEmpty()) chooseServer(); else { installBridge(); web.loadUrl(origin); }
+        installBridge();web.loadUrl(LOCAL+"/");
+        if (origin.isEmpty()) chooseServer(); else http=new WorkspaceHttp(origin);
     }
     private boolean sameOrigin(String value) {
-        try { return normalized(value, false).equals(origin); } catch(Exception e) { return false; }
+        try { return normalized(value, false).equals(LOCAL); } catch(Exception e) { return false; }
     }
     private String normalized(String value, boolean rootOnly) throws Exception {
         URI url = new URI(value.trim());
@@ -94,7 +105,7 @@ public class MainActivity extends ComponentActivity {
                     String next=normalized(field.getText().toString(),true);
                     new AlertDialog.Builder(this).setMessage(label("Connect to ", "连接到 ")+next+label("? Unsent content will be lost.", "？未发送内容将丢失。"))
                         .setNegativeButton(android.R.string.cancel,null).setPositiveButton(android.R.string.ok,(d,w)->{
-                            web.stopLoading(); documentGeneration++;origin=next;getPreferences(MODE_PRIVATE).edit().putString("origin",origin).apply();installBridge();web.loadUrl(origin);web.clearHistory();
+                            web.stopLoading(); documentGeneration++;origin=next;if(http!=null)http.close();http=new WorkspaceHttp(origin);getPreferences(MODE_PRIVATE).edit().putString("origin",origin).apply();web.loadUrl(LOCAL+"/");web.clearHistory();
                         }).show();
                 } catch(Exception e) { Toast.makeText(this,label("Enter an HTTPS server origin.", "请输入 HTTPS 服务器根地址。"),Toast.LENGTH_LONG).show(); }
             }).show();
@@ -103,7 +114,14 @@ public class MainActivity extends ComponentActivity {
     private void installBridge() {
         if(!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER))return;
         WebViewCompat.removeWebMessageListener(web,"HermesNative");
-        WebViewCompat.addWebMessageListener(web,"HermesNative",java.util.Collections.singleton(origin),(view,message,source,isMain,proxy)->{
+        WebViewCompat.addWebMessageListener(web,"HermesHTTP",java.util.Collections.singleton(LOCAL),(view,message,source,isMain,proxy)->{
+            if(!isMain||!sameOrigin(source.toString()))return;
+            try{JSONObject request=new JSONObject(message.getData());String id=request.getString("id");if(!id.matches("[a-zA-Z0-9-]{1,64}"))return;int generation=documentGeneration;
+                Consumer<JSONObject> reply=result->runOnUiThread(()->{if(generation!=documentGeneration)return;try{result.put("id",id);proxy.postMessage(result.toString());}catch(Exception ignored){}});
+                if(http==null)reply.accept(error("SERVER_NOT_CONFIGURED"));else http.request(request,reply);
+            }catch(Exception ignored){}
+        });
+        WebViewCompat.addWebMessageListener(web,"HermesNative",java.util.Collections.singleton(LOCAL),(view,message,source,isMain,proxy)->{
             if(!isMain||!sameOrigin(source.toString())||nativeBusy)return;
             try {
                 JSONObject request=new JSONObject(message.getData());
@@ -166,5 +184,5 @@ public class MainActivity extends ComponentActivity {
         }catch(android.content.ActivityNotFoundException e){reply.accept(error("CALENDAR_UNAVAILABLE"));}
         catch(Exception e){reply.accept(error("INVALID_INPUT"));}
     }
-    @Override protected void onDestroy() { documentGeneration++;calendarReply=null;if(health!=null)health.close();if(web!=null)web.destroy();super.onDestroy(); }
+    @Override protected void onDestroy() { documentGeneration++;calendarReply=null;if(http!=null)http.close();if(health!=null)health.close();if(web!=null)web.destroy();super.onDestroy(); }
 }

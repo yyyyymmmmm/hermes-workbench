@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build:web": "node build-web.mjs",
     "sync": "cap sync",
     "sync:android": "cap sync android",
     "sync:ios": "cap sync ios"

@@ -26,3 +26,4 @@ id_ed25519
 id_rsa
 google-services.json
 GoogleService-Info.plist
+/mobile/www/

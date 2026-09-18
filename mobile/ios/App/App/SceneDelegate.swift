@@ -30,6 +30,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, EKEventEditViewDelegate {
     private var web: WKWebView!
     private var origin: URL?
+    private let localURL=URL(string:"hermes-app://bundle/")!
+    private var http: WorkspaceHTTP?
     private let healthStore = HKHealthStore()
     private let eventStore = EKEventStore()
     private var nativeBusy = false
@@ -44,6 +46,8 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         view.backgroundColor = .systemBackground
         let configuration = WKWebViewConfiguration()
         configuration.userContentController.add(WeakDeviceHandler(self), name: "hermesDevice")
+        configuration.userContentController.add(WeakDeviceHandler(self), name: "workspaceHTTP")
+        configuration.setURLSchemeHandler(BundledAssets(), forURLScheme:"hermes-app")
         web = WKWebView(frame: .zero, configuration: configuration)
         web.navigationDelegate = self
         web.translatesAutoresizingMaskIntoConstraints = false
@@ -57,8 +61,9 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "server.rack"), style: .plain, target: self, action: #selector(chooseServer))
         navigationItem.rightBarButtonItem?.accessibilityLabel = text("Workspace server", "工作台服务器")
         if let saved = UserDefaults.standard.string(forKey: "workbenchOrigin"), let url = normalized(saved, rootOnly: true) {
-            origin = url; web.load(URLRequest(url: url))
+            origin = url; http=WorkspaceHTTP(url)
         } else { DispatchQueue.main.async { self.chooseServer() } }
+        web.load(URLRequest(url:localURL))
     }
     private func normalized(_ value: String, rootOnly: Bool) -> URL? {
         guard var parts = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -84,8 +89,9 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
             confirm.addAction(UIAlertAction(title: self.text("Cancel", "取消"), style: .cancel))
             confirm.addAction(UIAlertAction(title: self.text("Connect", "连接"), style: .default) { _ in
                 self.web.stopLoading(); self.documentGeneration += 1; self.origin = url
+                self.http?.close();self.http=WorkspaceHTTP(url)
                 UserDefaults.standard.set(url.absoluteString, forKey: "workbenchOrigin")
-                self.web.load(URLRequest(url: url))
+                self.web.load(URLRequest(url: self.localURL))
             })
             self.present(confirm, animated: true)
         })
@@ -98,7 +104,7 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
         if navigationAction.targetFrame?.isMainFrame == false { decisionHandler(.allow); return }
-        if normalized(url.absoluteString, rootOnly: false) == origin { decisionHandler(.allow); return }
+        if isLocal(url) { decisionHandler(.allow); return }
         decisionHandler(.cancel)
         guard url.scheme == "https" else { return }
         let alert = UIAlertController(title: text("Open external link?", "打开外部链接？"), message: url.host, preferredStyle: .alert)
@@ -111,8 +117,21 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { documentGeneration += 1 }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "workspaceHTTP" {
+            guard message.frameInfo.isMainFrame,let frame=message.frameInfo.request.url,isLocal(frame),
+                  let request=message.body as? [String:Any],let id=request["id"] as? String,id.range(of:"^[a-zA-Z0-9-]{1,64}$",options:.regularExpression) != nil else{return}
+            let generation=documentGeneration
+            let reply:([String:Any])->Void={result in DispatchQueue.main.async{
+                guard generation==self.documentGeneration,let current=self.web.url,self.isLocal(current) else{return}
+                var value=result;value["id"]=id
+                guard let data=try? JSONSerialization.data(withJSONObject:value),let json=String(data:data,encoding:.utf8) else{return}
+                self.web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('hermes-http-result',{detail:"+json+"}));",completionHandler:nil)
+            }}
+            if let http=http{http.request(request,reply)}else{reply(["error":"SERVER_NOT_CONFIGURED"])}
+            return
+        }
         guard !nativeBusy, message.frameInfo.isMainFrame,
-              let frameURL = message.frameInfo.request.url, normalized(frameURL.absoluteString, rootOnly: false) == origin,
+              let frameURL = message.frameInfo.request.url, isLocal(frameURL),
               let request = message.body as? [String: Any], let id = request["id"] as? String, id.count <= 64,
               id.range(of: "^[a-zA-Z0-9-]+$", options: .regularExpression) != nil,
               let method = request["method"] as? String, ["health.read", "calendar.read", "calendar.compose"].contains(method), let requestedOrigin = origin else { return }
@@ -123,7 +142,7 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         let reply: ([String: Any]) -> Void = { result in DispatchQueue.main.async {
             self.nativeBusy = false
             guard generation == self.documentGeneration, self.origin == requestedOrigin,
-                  let current = self.web.url, self.normalized(current.absoluteString, rootOnly: false) == requestedOrigin else { return }
+                  let current = self.web.url, self.isLocal(current) else { return }
             var value = result; value["id"] = id
             guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return }
             self.web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('hermes-native-result',{detail:" + json + "}));", completionHandler: nil)
@@ -139,6 +158,7 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         present(alert, animated: true)
     }
     private let healthTypes: [String: HKQuantityTypeIdentifier] = ["steps":.stepCount,"weight":.bodyMass,"restingHeartRate":.restingHeartRate,"bodyFat":.bodyFatPercentage,"oxygen":.oxygenSaturation,"bloodGlucose":.bloodGlucose]
+    private func isLocal(_ url:URL)->Bool{url.scheme=="hermes-app" && url.host=="bundle" && url.user==nil && url.password==nil}
     private func readHealth(_ keys: [String], _ reply: @escaping ([String:Any])->Void) {
         guard HKHealthStore.isHealthDataAvailable() else { reply(["error":"HEALTH_UNAVAILABLE"]); return }
         let types:[HKObjectType] = keys.compactMap { key in
@@ -238,6 +258,55 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
     func eventEditViewController(_ controller:EKEventEditViewController,didCompleteWith action:EKEventEditViewAction){
         let callback=eventReply;eventReply=nil
         controller.dismiss(animated:true){callback?(["status":action == .saved ? "saved" : "cancelled"])}
+    }
+}
+
+private final class BundledAssets:NSObject,WKURLSchemeHandler {
+    func webView(_ webView:WKWebView,start urlSchemeTask:WKURLSchemeTask){
+        guard let url=urlSchemeTask.request.url,url.host=="bundle" else{urlSchemeTask.didFailWithError(URLError(.badURL));return}
+        let name=url.path=="/" ? "index.html" : String(url.path.dropFirst())
+        guard !name.contains(".."),name.range(of:"^[A-Za-z0-9/_.-]+$",options:.regularExpression) != nil,
+              let root=Bundle.main.resourceURL?.appendingPathComponent("public"),let data=try? Data(contentsOf:root.appendingPathComponent(name)) else{urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist));return}
+        let mime=name.hasSuffix(".js") ? "application/javascript" : name.hasSuffix(".css") ? "text/css" : name.hasSuffix(".jpg") ? "image/jpeg" : name.hasSuffix(".json") ? "application/json" : "text/html"
+        urlSchemeTask.didReceive(URLResponse(url:url,mimeType:mime,expectedContentLength:data.count,textEncodingName:"utf-8"));urlSchemeTask.didReceive(data);urlSchemeTask.didFinish()
+    }
+    func webView(_ webView:WKWebView,stop urlSchemeTask:WKURLSchemeTask){}
+}
+
+private final class WorkspaceHTTP:NSObject,URLSessionDataDelegate {
+    private let origin:URL
+    private var session:URLSession!
+    private let lock=NSLock()
+    private struct Pending {var data=Data();var response:HTTPURLResponse?;let reply:([String:Any])->Void}
+    private var pending=[Int:Pending]()
+    init(_ origin:URL){self.origin=origin;super.init();let config=URLSessionConfiguration.ephemeral;config.timeoutIntervalForRequest=75;config.timeoutIntervalForResource=85;config.urlCache=nil;session=URLSession(configuration:config,delegate:self,delegateQueue:nil)}
+    func close(){session.invalidateAndCancel()}
+    func request(_ input:[String:Any],_ reply:@escaping ([String:Any])->Void){
+        guard let path=input["path"] as? String,let parts=URLComponents(string:path),parts.scheme==nil,parts.host==nil,parts.fragment==nil,
+              parts.percentEncodedPath.range(of:"^/api/[A-Za-z0-9/_-]+$",options:.regularExpression) != nil,
+              let target=URL(string:path,relativeTo:origin)?.absoluteURL,
+              let method=input["method"] as? String,["GET","POST","PATCH","DELETE","PUT"].contains(method),
+              let body=input["body"] as? String,body.utf8.count<=524288 else{reply(["error":"INVALID_REQUEST"]);return}
+        var request=URLRequest(url:target);request.httpMethod=method;request.setValue(origin.absoluteString,forHTTPHeaderField:"Origin")
+        let headers=input["headers"] as? [String:String] ?? [:]
+        for name in ["content-type","x-csrf-token","x-workspace-user","idempotency-key"]{if let value=headers[name]{guard value.count<=4096,!value.contains("\r"),!value.contains("\n") else{reply(["error":"INVALID_REQUEST"]);return};request.setValue(value,forHTTPHeaderField:name)}}
+        if method != "GET" && !body.isEmpty{request.httpBody=body.data(using:.utf8)}
+        lock.lock();guard pending.count<16 else{lock.unlock();reply(["error":"TOO_MANY_REQUESTS"]);return}
+        let task=session.dataTask(with:request);pending[task.taskIdentifier]=Pending(reply:reply);lock.unlock();task.resume()
+    }
+    func urlSession(_ session:URLSession,task:URLSessionTask,willPerformHTTPRedirection response:HTTPURLResponse,newRequest request:URLRequest,completionHandler:@escaping(URLRequest?)->Void){completionHandler(nil)}
+    func urlSession(_ session:URLSession,dataTask:URLSessionDataTask,didReceive response:URLResponse,completionHandler:@escaping(URLSession.ResponseDisposition)->Void){
+        guard let response=response as? HTTPURLResponse,!(300..<400).contains(response.statusCode),response.expectedContentLength<=8*1024*1024 else{completionHandler(.cancel);return}
+        lock.lock();pending[dataTask.taskIdentifier]?.response=response;lock.unlock();completionHandler(.allow)
+    }
+    func urlSession(_ session:URLSession,dataTask:URLSessionDataTask,didReceive data:Data){
+        lock.lock();let size=(pending[dataTask.taskIdentifier]?.data.count ?? 0)+data.count
+        if size<=8*1024*1024{pending[dataTask.taskIdentifier]?.data.append(data)};lock.unlock();if size>8*1024*1024{dataTask.cancel()}
+    }
+    func urlSession(_ session:URLSession,task:URLSessionTask,didCompleteWithError error:Error?){
+        lock.lock();let item=pending.removeValue(forKey:task.taskIdentifier);lock.unlock();guard let item=item else{return}
+        guard error==nil,let response=item.response else{item.reply(["error":"CONNECTION_FAILED"]);return}
+        item.reply(["status":response.statusCode,"contentType":response.value(forHTTPHeaderField:"Content-Type") ?? "application/json","body":item.data.base64EncodedString()])
     }
 }
 

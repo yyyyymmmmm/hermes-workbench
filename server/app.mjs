@@ -244,6 +244,11 @@ export async function createApp(config, adapters = {}) {
     reply.raw.write(': connected\n\n');
     reply.raw.on('close',()=>{ clearInterval(timer); streams.delete(reply.raw); });
   });
+  app.get('/api/runs/:id/event-batch',async req=>{
+    const id=z.uuid().parse(req.params.id),after=z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).parse(req.query.after||0);
+    runs.get(req.session.owner,id);
+    return {events:runs.events(req.session.owner,id,after)};
+  });
   // An explicit asset map keeps source code, runtime data and deployment secrets unreachable.
   const assets = {
     '/': ['../web/index.html', 'text/html; charset=utf-8'],
