@@ -1,4 +1,5 @@
 window.HermesEnglish={
+"经典工作台":"Classic workspace",
 "项目文件":"Project files",
 "返回对话":"Back to conversation",
 "保存到当前项目":"Save to this project",

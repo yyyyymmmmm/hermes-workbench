@@ -1,4 +1,30 @@
 /* Product-wide tokens and visual rules. Feature styles retain layout/behavior ownership. */
+/* Classic follows ui/terminal, with darker secondary text for readable controls. */
+:root[data-theme=classic]{--surface:#fff;--panel:#f8f9fc;--sidebar:#f7f7f8;--ink:#24262b;--muted:#68788e;--line:#e3e8f0;--soft:#eef1f7;--field:#fff;--hover:#f1f4f8;--accent:#24262b;--on-accent:#fff;--success:#278163;--danger:#b73347;--radius:7px}
+:root[data-theme=classic] .sidebar .brand-mark{background:#fff0e9;color:#bd593b}
+:root[data-theme=classic] .nav button.active{background:#e9edf5;box-shadow:none}
+:root[data-theme=classic] .nav button.active:before{background:#d59072}
+:root[data-theme=classic] .nav [data-page=home] svg{color:#b67555}
+:root[data-theme=classic] .nav [data-page=workspace] svg{color:#718eb7}
+:root[data-theme=classic] .nav [data-page=tasks] svg{color:#529077}
+:root[data-theme=classic] .nav [data-page=calendar] svg{color:#688dbe}
+:root[data-theme=classic] .nav [data-page=health] svg{color:#bc6688}
+:root[data-theme=classic] .nav [data-page=modules] svg{color:#9a79a8}
+:root[data-theme=classic] .nav [data-page=connections] svg{color:#549496}
+:root[data-theme=classic] .nav [data-page=hermes] svg{color:#c08059}
+:root[data-theme=classic] .project-library,:root[data-theme=classic] .document-library{background:var(--panel)}
+:root[data-theme=classic] .project-action-receipt{border-color:#dce5f0;background:#fff}
+:root[data-theme=classic] .module-card{border-color:var(--line);border-radius:7px;box-shadow:none}
+:root[data-theme=classic] .module-card:hover{border-color:#bdcbdc;box-shadow:0 3px 12px #28394c08}
+:root[data-theme=classic] .setting-row{padding-top:22px;padding-bottom:22px}
+.swatch-classic{background:#f7f7f8;color:#24262b;box-shadow:inset 12px 0 #e9edf5,inset -12px 0 #fff}
+.preferences .theme-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(min-width:1000px){
+ :root[data-theme=classic] .preferences{max-width:960px}
+ :root[data-theme=classic] .preferences section{display:grid;grid-template-columns:140px minmax(0,1fr);column-gap:28px;padding:28px 0}
+ :root[data-theme=classic] .preferences section>h2{grid-column:1;grid-row:1;line-height:1.8;margin:0}
+ :root[data-theme=classic] .preferences section>:not(h2){grid-column:2;min-width:0}
+}
 :root{--ui-font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;--surface:#fff;--panel:#f8f9fb;--sidebar:#f3f4f6;--ink:#20242c;--muted:#66707e;--line:#e4e7ec;--soft:#eceff3;--field:#fff;--hover:#eef1f5;--accent:#242a34;--on-accent:#fff;--success:#237656;--danger:#b73347;--radius:6px;--ease:cubic-bezier(.2,.8,.2,1);--fast:140ms;--normal:220ms;font-family:var(--ui-font)}
 :root[data-theme=dark]{--surface:#202124;--panel:#26282d;--sidebar:#191b1f;--ink:#e8ebef;--muted:#a4acb9;--line:#383c44;--soft:#333841;--field:#25282d;--hover:#30353d;--accent:#e6eaf0;--on-accent:#202124;--success:#86d6b3;--danger:#ff9aa9}
 :root[data-theme=blue]{--accent:#1464cc;--soft:#eaf2ff;--on-accent:#fff}:root[data-theme=red]{--accent:#bf344a;--soft:#fff0f2;--on-accent:#fff}:root[data-theme=pink]{--accent:#b72f72;--soft:#fff0f7;--on-accent:#fff}
