@@ -3,11 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>NSHealthShareUsageDescription</key>
-    <string>Read only the health metrics you select: steps, weight, resting heart rate, body fat, oxygen saturation and blood glucose. Sharing with your selected workspace website requires separate confirmation.</string>
+    <string>Read only the health metrics you select: steps, sleep, weight, resting heart rate, body fat, oxygen saturation and blood glucose. Sharing with your selected workspace website requires separate confirmation.</string>
     <key>NSCalendarsUsageDescription</key>
     <string>Read the next seven days of calendar titles and times when you request them.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Read the next seven days of calendar titles and times after confirming your workspace website. This feature does not modify events.</string>
+    <string>Read the next seven days of calendar titles and times after confirming your workspace website.</string>
+    <key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+    <string>Prepare a calendar event from a scheduled task. You review and save it in the system calendar editor.</string>
   <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>

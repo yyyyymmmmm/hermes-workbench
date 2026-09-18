@@ -15,7 +15,7 @@ import org.json.JSONArray
 
 class HealthReader(private val activity: ComponentActivity) {
  private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
- private val types=mapOf("steps" to StepsRecord::class,"weight" to WeightRecord::class,"restingHeartRate" to RestingHeartRateRecord::class,"bodyFat" to BodyFatRecord::class,"oxygen" to OxygenSaturationRecord::class,"bloodGlucose" to BloodGlucoseRecord::class)
+ private val types=mapOf("steps" to StepsRecord::class,"sleep" to SleepSessionRecord::class,"weight" to WeightRecord::class,"restingHeartRate" to RestingHeartRateRecord::class,"bodyFat" to BodyFatRecord::class,"oxygen" to OxygenSaturationRecord::class,"bloodGlucose" to BloodGlucoseRecord::class)
  private var keys=listOf<String>()
  private var reply: Consumer<JSONObject>?=null
  private val launcher=activity.registerForActivityResult(PermissionController.createRequestPermissionResultContract()){read()}
@@ -35,6 +35,10 @@ class HealthReader(private val activity: ComponentActivity) {
    if(HealthPermission.getReadPermission(types.getValue(key)) !in grants){metrics.put(item.put("status","denied"));continue}
    try{val range=TimeRangeFilter.between(start,end);var value:Number?=null;var at:String?=null;var unit=""
     when(key){
+     "sleep"->{val since=end.minusSeconds(86400);val records=client.readRecords(ReadRecordsRequest(SleepSessionRecord::class,TimeRangeFilter.between(since,end),pageSize=1000))
+      if(records.pageToken!=null)throw IllegalStateException("Incomplete range")
+      val intervals=records.records.flatMap{it.stages}.filter{it.stage in setOf(2,4,5,6)}.map{it.startTime.toEpochMilli() to it.endTime.toEpochMilli()}
+      value=sleepMinutes(intervals,since.toEpochMilli(),end.toEpochMilli());at=end.toString();unit="min";item.put("from",since.toString()).put("aggregation","union_of_asleep_stages")}
      "steps"->{value=client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL),TimeRangeFilter.between(now.toLocalDate().atStartOfDay(now.zone).toInstant(),end)))[StepsRecord.COUNT_TOTAL];at=end.toString();unit="count"}
      "weight"->{val r=client.readRecords(ReadRecordsRequest(WeightRecord::class,range,ascendingOrder=false,pageSize=1)).records.firstOrNull();value=r?.weight?.inKilograms;at=r?.time?.toString();unit="kg"}
      "restingHeartRate"->{val r=client.readRecords(ReadRecordsRequest(RestingHeartRateRecord::class,range,ascendingOrder=false,pageSize=1)).records.firstOrNull();value=r?.beatsPerMinute;at=r?.time?.toString();unit="bpm"}

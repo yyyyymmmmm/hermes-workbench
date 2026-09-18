@@ -3,6 +3,7 @@ import Capacitor
 import WebKit
 import HealthKit
 import EventKit
+import EventKitUI
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -26,13 +27,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 }
 
-final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, EKEventEditViewDelegate {
     private var web: WKWebView!
     private var origin: URL?
     private let healthStore = HKHealthStore()
     private let eventStore = EKEventStore()
     private var nativeBusy = false
     private var documentGeneration = 0
+    private var eventReply: (([String:Any])->Void)?
     private func text(_ en: String, _ zh: String) -> String {
         Locale.preferredLanguages.first?.hasPrefix("zh") == true ? zh : en
     }
@@ -113,8 +115,8 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
               let frameURL = message.frameInfo.request.url, normalized(frameURL.absoluteString, rootOnly: false) == origin,
               let request = message.body as? [String: Any], let id = request["id"] as? String, id.count <= 64,
               id.range(of: "^[a-zA-Z0-9-]+$", options: .regularExpression) != nil,
-              let method = request["method"] as? String, ["health.read", "calendar.read"].contains(method), let requestedOrigin = origin else { return }
-        let keys = Array(Set(request["metrics"] as? [String] ?? [])).filter { healthTypes[$0] != nil }.sorted()
+              let method = request["method"] as? String, ["health.read", "calendar.read", "calendar.compose"].contains(method), let requestedOrigin = origin else { return }
+        let keys = Array(Set(request["metrics"] as? [String] ?? [])).filter { healthTypes[$0] != nil || $0 == "sleep" }.sorted()
         if method == "health.read" && keys.isEmpty { return }
         nativeBusy = true
         let generation = documentGeneration
@@ -126,6 +128,7 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
             guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return }
             self.web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('hermes-native-result',{detail:" + json + "}));", completionHandler: nil)
         } }
+        if method == "calendar.compose" { composeCalendar(request["event"] as? [String:Any], reply); return }
         let scope = method == "health.read" ? text("Today's steps / latest values in 7 days: ", "今日步数／近七天最新指标：") + keys.joined(separator: ", ") : text("Calendar titles and times for the next 7 days (up to 100)", "未来七天的日历标题和时间（最多100条）")
         let alert = UIAlertController(title: text("Share device data?", "共享设备数据？"), message: requestedOrigin.absoluteString + "\n" + scope + "\n" + text("Data will be available to this website. Allow this read?", "数据将交给此网站。允许本次读取？"), preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: text("Cancel", "取消"), style: .cancel) { _ in reply(["error":"CANCELLED"]) })
@@ -138,12 +141,18 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
     private let healthTypes: [String: HKQuantityTypeIdentifier] = ["steps":.stepCount,"weight":.bodyMass,"restingHeartRate":.restingHeartRate,"bodyFat":.bodyFatPercentage,"oxygen":.oxygenSaturation,"bloodGlucose":.bloodGlucose]
     private func readHealth(_ keys: [String], _ reply: @escaping ([String:Any])->Void) {
         guard HKHealthStore.isHealthDataAvailable() else { reply(["error":"HEALTH_UNAVAILABLE"]); return }
-        let types = keys.compactMap { healthTypes[$0].flatMap { HKQuantityType.quantityType(forIdentifier:$0) } }
+        let types:[HKObjectType] = keys.compactMap { key in
+            if key == "sleep" { return HKCategoryType.categoryType(forIdentifier:.sleepAnalysis) }
+            return healthTypes[key].flatMap { HKQuantityType.quantityType(forIdentifier:$0) }
+        }
         healthStore.requestAuthorization(toShare:[], read:Set(types)) { ok, error in
             guard ok, error == nil else { reply(["error":"READ_FAILED"]); return }
             let end=Date(), start=Date().addingTimeInterval(-7*86400), group=DispatchGroup(), lock=NSLock()
             var metrics=[[String:Any]]()
             for key in keys {
+                if key == "sleep" {
+                    group.enter();self.readSleep(end) { item in lock.lock();metrics.append(item);lock.unlock();group.leave() };continue
+                }
                 guard let identifier=self.healthTypes[key], let type=HKQuantityType.quantityType(forIdentifier:identifier) else { continue }
                 group.enter()
                 let units: [String:String] = ["steps":"count","weight":"kg","restingHeartRate":"count/min","bodyFat":"%","oxygen":"%","bloodGlucose":"mmol/L"]
@@ -166,6 +175,22 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
             }
             group.notify(queue:.main) { reply(["source":"HealthKit","metrics":metrics,"from":ISO8601DateFormatter().string(from:start),"to":ISO8601DateFormatter().string(from:end)]) }
         }
+    }
+    private func readSleep(_ end:Date,_ reply:@escaping ([String:Any])->Void){
+        let start=end.addingTimeInterval(-86400)
+        guard let type=HKCategoryType.categoryType(forIdentifier:.sleepAnalysis) else{reply(["key":"sleep","status":"read_failed"]);return}
+        let predicate=HKQuery.predicateForSamples(withStart:start,end:end,options:[])
+        healthStore.execute(HKSampleQuery(sampleType:type,predicate:predicate,limit:1000,sortDescriptors:nil){_,samples,error in
+            guard error == nil,(samples?.count ?? 0)<1000 else{reply(["key":"sleep","status":"read_failed"]);return}
+            let intervals=(samples as? [HKCategorySample] ?? []).filter{[1,3,4,5].contains($0.value)}.map{(max($0.startDate,start),min($0.endDate,end))}.filter{$0.1 > $0.0}.sorted{$0.0 < $1.0}
+            var total:TimeInterval=0
+            if let first=intervals.first{
+                var left=first.0,right=first.1
+                for (a,b) in intervals.dropFirst(){if a<=right{right=max(right,b)}else{total+=right.timeIntervalSince(left);left=a;right=b}}
+                total+=right.timeIntervalSince(left)
+            }
+            reply(["key":"sleep","value":intervals.isEmpty ? NSNull() : total/60 as Any,"unit":"min","status":intervals.isEmpty ? "no_data" : "available","at":ISO8601DateFormatter().string(from:end),"from":ISO8601DateFormatter().string(from:start),"aggregation":"union_of_asleep_stages"])
+        })
     }
     private func readSteps(_ reply: @escaping ([String: Any]) -> Void) {
         guard HKHealthStore.isHealthDataAvailable(), let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { reply(["error":"HEALTH_UNAVAILABLE"]); return }
@@ -195,6 +220,24 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         }
         if #available(iOS 17.0, *) { eventStore.requestFullAccessToEvents(completion:read) }
         else { eventStore.requestAccess(to:.event, completion:read) }
+    }
+    private func composeCalendar(_ data:[String:Any]?,_ reply:@escaping ([String:Any])->Void){
+        guard let data=data,let title=data["title"] as? String,!title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,title.count<=300,
+              let start=data["start"] as? Double,let end=data["end"] as? Double,start.isFinite,end.isFinite,
+              start>=946684800000,end<=4102444800000,end-start>=300000,end-start<=86400000 else{reply(["error":"INVALID_INPUT"]);return}
+        let generation=documentGeneration
+        let open:(Bool,Error?)->Void={allowed,error in DispatchQueue.main.async{
+            guard allowed,error == nil else{reply(["error":"PERMISSION_DENIED"]);return}
+            guard generation==self.documentGeneration else{reply(["error":"CANCELLED"]);return}
+            let event=EKEvent(eventStore:self.eventStore);event.title=title;event.startDate=Date(timeIntervalSince1970:start/1000);event.endDate=Date(timeIntervalSince1970:end/1000)
+            let editor=EKEventEditViewController();editor.eventStore=self.eventStore;editor.event=event;editor.editViewDelegate=self
+            self.eventReply=reply;editor.isModalInPresentation=true;self.present(editor,animated:true)
+        }}
+        if #available(iOS 17.0,*){eventStore.requestWriteOnlyAccessToEvents(completion:open)}else{eventStore.requestAccess(to:.event,completion:open)}
+    }
+    func eventEditViewController(_ controller:EKEventEditViewController,didCompleteWith action:EKEventEditViewAction){
+        let callback=eventReply;eventReply=nil
+        controller.dismiss(animated:true){callback?(["status":action == .saved ? "saved" : "cancelled"])}
     }
 }
 

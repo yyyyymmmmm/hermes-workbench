@@ -108,10 +108,10 @@ public class MainActivity extends ComponentActivity {
             try {
                 JSONObject request=new JSONObject(message.getData());
                 String id=request.getString("id"),method=request.getString("method");
-                if(!id.matches("[a-zA-Z0-9-]{1,64}")||!java.util.Arrays.asList("health.read","calendar.read").contains(method))return;
+                if(!id.matches("[a-zA-Z0-9-]{1,64}")||!java.util.Arrays.asList("health.read","calendar.read","calendar.compose").contains(method))return;
                 java.util.ArrayList<String> keys=new java.util.ArrayList<>();
                 JSONArray selected=request.optJSONArray("metrics");
-                if(selected!=null)for(int n=0;n<Math.min(selected.length(),6);n++){String key=selected.optString(n);if(java.util.Arrays.asList("steps","weight","restingHeartRate","bodyFat","oxygen","bloodGlucose").contains(key)&&!keys.contains(key))keys.add(key);}
+                if(selected!=null)for(int n=0;n<Math.min(selected.length(),7);n++){String key=selected.optString(n);if(java.util.Arrays.asList("steps","sleep","weight","restingHeartRate","bodyFat","oxygen","bloodGlucose").contains(key)&&!keys.contains(key))keys.add(key);}
                 if(method.equals("health.read")&&keys.isEmpty())return;
                 int generation=documentGeneration;String requestedOrigin=origin;nativeBusy=true;
                 Consumer<JSONObject> reply=result->{
@@ -119,6 +119,7 @@ public class MainActivity extends ComponentActivity {
                     if(generation!=documentGeneration||!origin.equals(requestedOrigin)||!sameOrigin(web.getUrl()))return;
                     try {result.put("id",id);proxy.postMessage(result.toString());}catch(Exception ignored){}
                 };
+                if(method.equals("calendar.compose")){composeCalendar(request.optJSONObject("event"),reply);return;}
                 new AlertDialog.Builder(this).setTitle(label("Share device data?", "共享设备数据？"))
                     .setMessage(requestedOrigin+"\n"+(method.equals("health.read")?label("Today's steps / latest values in 7 days: ", "今日步数／近七天最新指标：")+android.text.TextUtils.join(", ",keys):label("Calendar titles and times for the next 7 days (up to 100)", "未来七天的日历标题和时间（最多100条）"))+"\n"+label("Data will be available to this website. Allow this read?", "数据将交给此网站。允许本次读取？"))
                     .setNegativeButton(android.R.string.cancel,(d,w)->reply.accept(error("CANCELLED")))
@@ -152,6 +153,18 @@ public class MainActivity extends ComponentActivity {
             }catch(Exception e){result=error("READ_FAILED");}
             JSONObject value=result;runOnUiThread(()->reply.accept(value));
         }).start();
+    }
+    private void composeCalendar(JSONObject event,Consumer<JSONObject> reply){
+        try{
+            if(event==null)throw new Exception();
+            String title=event.getString("title").trim();long start=event.getLong("start"),end=event.getLong("end");
+            if(title.isEmpty()||title.length()>300||start<946684800000L||end>4102444800000L||end-start<300000||end-start>86400000)throw new Exception();
+            Intent editor=new Intent(Intent.ACTION_INSERT,CalendarContract.Events.CONTENT_URI)
+                .putExtra(CalendarContract.Events.TITLE,title).putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME,start).putExtra(CalendarContract.EXTRA_EVENT_END_TIME,end);
+            startActivity(editor);
+            reply.accept(new JSONObject().put("status","editor_opened"));
+        }catch(android.content.ActivityNotFoundException e){reply.accept(error("CALENDAR_UNAVAILABLE"));}
+        catch(Exception e){reply.accept(error("INVALID_INPUT"));}
     }
     @Override protected void onDestroy() { documentGeneration++;calendarReply=null;if(health!=null)health.close();if(web!=null)web.destroy();super.onDestroy(); }
 }
