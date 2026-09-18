@@ -146,9 +146,15 @@ export async function createApp(config, adapters = {}) {
     if(runs.active(req.session.owner))throw new Fault(409,'RUN_ACTIVE','Resolve the active run first');
     return hermes.saveConfig(req.session.owner,req.body);
   });
+  app.get('/api/hermes/content/:resource',async req=>hermes.content(req.session.owner,req.params.resource));
+  app.post('/api/hermes/content/:resource',async req=>{
+    if(runs.active(req.session.owner))throw new Fault(409,'RUN_ACTIVE','Resolve the active run first');
+    return hermes.content(req.session.owner,z.enum(['soul','schedules']).parse(req.params.resource),req.body);
+  });
   app.post('/api/hermes/manage',async req=>{
     if(runs.active(req.session.owner))throw new Fault(409,'RUN_ACTIVE','Resolve the active run first');
     const input=z.discriminatedUnion('section',[
+      z.object({section:z.literal('tools'),id:z.string().min(1).max(200),enabled:z.boolean(),confirm:z.literal(true)}).strict(),
       z.object({section:z.literal('skills'),id:z.string().min(1).max(200),enabled:z.boolean(),confirm:z.literal(true)}).strict(),
       z.object({section:z.literal('mcp'),id:z.string().min(1).max(200),enabled:z.boolean(),confirm:z.literal(true)}).strict(),
       z.object({section:z.literal('schedules'),id:z.string().min(1).max(200),action:z.enum(['pause','resume']),confirm:z.literal(true)}).strict()

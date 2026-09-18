@@ -14,9 +14,11 @@ test('management responses whitelist fields and do not expose provider keys or c
  assert.throws(()=>managementView('skills',{message:'not supported'}));
 });
 test('management uses real allowlisted endpoints, account auth, explicit confirmation and safe audio',async()=>{
- const dir=mkdtempSync(join(tmpdir(),'hermes-management-')),config=testConfig(dir);let enabled=true,methodUsed,speech=false,installed=false,installWrites=0;
+ const dir=mkdtempSync(join(tmpdir(),'hermes-management-')),config=testConfig(dir);let enabled=true,methodUsed,speech=false,installed=false,installWrites=0,toolEnabled=true;
  const app=await createApp(config,{auth:mockAuth,hermesTransport:async(url,opts)=>{
   const path=new URL(url).pathname;let data;
+  if(path==='/api/tools/toolsets')data={toolsets:[{name:'terminal',enabled:toolEnabled}]};
+  if(path==='/api/tools/toolsets/terminal'){assert.equal(opts.method,'PUT');assert.equal(new URL(url).searchParams.get('profile'),'default');toolEnabled=JSON.parse(opts.body).enabled;data={ok:true};}
   if(path==='/api/mcp/catalog')data={entries:[{name:'notion',transport:'http',needs_install:false,required_env:[],installed,enabled:false},{name:'unsafe',transport:'stdio',needs_install:true,required_env:[],installed:false,enabled:false}]};
   if(path==='/api/mcp/catalog/install'){assert.equal(opts.method,'POST');assert.deepEqual(JSON.parse(opts.body),{name:'notion',enable:false,env:{},profile:'default'});installed=true;installWrites++;data={ok:true};}
   if(path==='/api/skills')data={skills:[{name:'test-skill',enabled}]};
@@ -33,6 +35,7 @@ test('management uses real allowlisted endpoints, account auth, explicit confirm
   assert.equal((await app.inject({method:'POST',url:'/api/hermes/manage',headers:alice,payload:{section:'skills',id:'test-skill',enabled:false}})).statusCode,400);
   assert.equal((await app.inject({method:'POST',url:'/api/hermes/manage',headers:alice,payload:{section:'skills',id:'test-skill',enabled:false,confirm:true}})).statusCode,200);
   assert.equal(methodUsed,'PUT');assert.equal(enabled,false);
+  assert.equal((await app.inject({method:'POST',url:'/api/hermes/manage',headers:alice,payload:{section:'tools',id:'terminal',enabled:false,confirm:true}})).statusCode,200);assert.equal(toolEnabled,false);
   assert.equal((await app.inject({method:'POST',url:'/api/hermes/manage',headers:alice,payload:{section:'mcp',id:'..',enabled:false,confirm:true}})).statusCode,400);
   assert.equal((await app.inject({method:'POST',url:'/api/hermes/speak',headers:alice,payload:{text:'Read this.'}})).statusCode,200);assert.equal(speech,true);
   const install=(payload,headers=alice)=>app.inject({method:'POST',url:'/api/hermes/install-mcp',headers,payload});

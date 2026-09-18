@@ -9,6 +9,7 @@ import {mcpFailure} from './mcp-errors.mjs';
 import {skillHubService} from './skills-hub.mjs';
 import {profileService,profileName} from './profiles.mjs';
 import {externalAgents} from './external-agents.mjs';
+import {agentContent} from './agent-content.mjs';
 
 export function normalizeModels(input) {
   if (!input || input.ok === false || input.success === false || input.error) throw new Fault(502, 'MODEL_DISCOVERY_FAILED', 'Gateway rejected model discovery');
@@ -74,6 +75,12 @@ export function hermesAdapter(config, store, vault, transport = request) {
     return row;
   };
   return {
+    content(owner,resource,input){return exclusive(owner,async()=>{
+      const row=get(owner),jar=await CookieJar.deserialize(JSON.parse(vault.open(owner,row.jar)));
+      const work=()=>agentContent({store,owner,connection:row.id,call:(path,method,body)=>remote(row.origin,jar,path,method,body)},resource,input);
+      try{return await (input?exclusiveConfig(row.origin,work):work());}
+      finally{store.run('UPDATE connections SET jar=? WHERE owner=? AND id=?',vault.seal(owner,JSON.stringify(await jar.serialize())),owner,row.id);}
+    });},
     externalAgents(owner){return exclusive(owner,async()=>{
       const row=get(owner),jar=await CookieJar.deserialize(JSON.parse(vault.open(owner,row.jar)));
       try{return await externalAgents(path=>remote(row.origin,jar,path),row.origin);}
@@ -203,7 +210,15 @@ export function hermesAdapter(config, store, vault, transport = request) {
       const name=encodeURIComponent(input.id);
       const available=managementView(input.section,await remote(row.origin,jar,managementPath(input.section))).items;
       if(!available.some(item=>item.id===input.id))throw new Fault(404,'CAPABILITY_NOT_FOUND','Remote item no longer exists');
-      if(input.section==='skills')await remote(row.origin,jar,'/api/skills/toggle','PUT',{name:input.id,enabled:input.enabled});
+      if(input.section==='tools'){
+        if(!available.some(item=>item.id===input.id&&item.enabled!==null))throw new Fault(400,'INVALID_INPUT','Tool is not configurable');
+        await exclusiveConfig(row.origin,async()=>{
+          await remote(row.origin,jar,`/api/tools/toolsets/${name}?profile=default`,'PUT',{enabled:input.enabled,profile:'default'});
+          const items=managementView('tools',await remote(row.origin,jar,'/api/tools/toolsets?profile=default')).items;
+          if(items.find(item=>item.id===input.id)?.enabled!==input.enabled)throw new Fault(502,'CONFIG_UNVERIFIED','Tool setting could not be verified');
+        });
+      }
+      else if(input.section==='skills')await remote(row.origin,jar,'/api/skills/toggle','PUT',{name:input.id,enabled:input.enabled});
       else if(input.section==='mcp')await remote(row.origin,jar,`/api/mcp/servers/${name}/enabled`,'PUT',{enabled:input.enabled});
       else await remote(row.origin,jar,`/api/cron/jobs/${name}/${input.action}`,'POST',{});
       store.run('UPDATE connections SET jar=? WHERE owner=? AND id=?',vault.seal(owner,JSON.stringify(await jar.serialize())),owner,row.id);
@@ -219,7 +234,7 @@ export function hermesAdapter(config, store, vault, transport = request) {
     },
     info(owner) {
       const row = store.one('SELECT * FROM connections WHERE owner=?', owner);
-      return row ? { connected: true, origin: row.origin, username: row.username, updatedAt: row.updated,
+      return row ? { connected: true, connectionId: row.id, origin: row.origin, username: row.username, updatedAt: row.updated,
         catalog: row.catalog ? JSON.parse(row.catalog) : null, preference: row.preference ? JSON.parse(row.preference) : null } : { connected: false };
     },
     connect(owner, input) { return exclusive(owner, async () => {

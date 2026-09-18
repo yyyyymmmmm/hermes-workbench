@@ -28,6 +28,7 @@ const messages = {
   CAPABILITY_FORMAT: '网关返回的格式不兼容，请核对网关版本。', CAPABILITY_NOT_FOUND:'远端条目已不存在，请刷新。',
   CONFIG_CONFLICT:'服务器配置已变化，草稿已保留。请记录修改后重新读取。',
   CONFIG_UNVERIFIED:'保存结果未确认，草稿已保留。请重新读取核对，勿重复提交。',
+  SCHEDULE_UNVERIFIED:'定时任务结果未确认，请刷新远端任务列表核对，勿重复新建。',
   INSTALL_UNAVAILABLE:'此条目已安装或需要额外配置，请刷新目录。',
   INSTALL_UNVERIFIED:'安装结果未确认，请重新读取目录核对，勿重复安装。',
   DOCUMENT_CONFLICT: '文档已在其他设备修改。本地内容已保留，请查看新版本或另存副本。',

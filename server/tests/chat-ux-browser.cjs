@@ -12,7 +12,7 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
   assert.equal(await page.getByRole('button',{name:'发送',exact:true}).isDisabled(),true);
   await input.fill('帮我整理本周的发布计划');await input.press('Shift+Enter');assert.equal(submitted,0);assert.ok((await input.inputValue()).includes('\n'));
   await input.dispatchEvent('keydown',{key:'Enter',isComposing:true,keyCode:229});assert.equal(submitted,0);
-  await input.press('Enter');await page.locator('.live-run-status').filter({hasText:'正在执行'}).waitFor();assert.equal(submitted,1);
+  await input.press('Enter');await page.locator('[data-consent="allow"]').click();await page.locator('.live-run-status').filter({hasText:'正在执行'}).waitFor();assert.equal(submitted,1);
   const output='# 发布计划\n\n先确定**验收范围**，再安排时间。\n\n| 事项 | 状态 |\n| --- | --- |\n| 桌面交互 | 待验收 |\n| 移动布局 | 待验收 |\n\n```js\nconst ready = true;\n```\n\n'+Array.from({length:25},(_,i)=>`### ${i+1}. 检查项目\n\n核对任务、时间安排与关联文档。\n\n`).join('');
   emit('message.delta',{text:output});await page.locator('.chat-output h1').waitFor();assert.equal(await page.locator('.chat-output table').count(),1);
   await input.fill('下一步还要检查附件预览。\n请保留所有已完成的工作。');await page.locator('.live-chat-log').evaluate(el=>el.scrollTop=0);await page.getByRole('button',{name:'回到最新消息',exact:true}).waitFor();

@@ -44,7 +44,7 @@ window.LiveUI = (() => {
       const tab = state.agentTab || 'models';
       const tabs = [['models','连接与模型'],['external','外部 Agent'],['collaboration','协作'],['tools','工具权限'],['skills','Skills / MCP'],['memory','记忆与设定'],['schedules','定时任务'],['voice','语音']];
       const pane = document.createElement('template'); pane.innerHTML = helpers.page(); pane.content.querySelector('.page-head')?.remove();
-      if(tab!=='models')return `${title('Hermes，按你的方式工作')}<div class="agent-tabs" role="tablist" aria-label="Hermes 管理">${tabs.map(([id,name])=>`<button role="tab" data-agent-tab="${id}" aria-selected="${id===tab}" class="${id===tab?'active':''}">${name}</button>`).join('')}</div>${window.HermesAgent.panel(tab)}`;
+      if(tab!=='models')return `${title('Hermes，按你的方式工作')}<div class="agent-status"><span class="ai-mark">${i('bot')}</span><div><strong>${e(state.hermes.username || '个人 Agent')}</strong><p>${e(state.hermes.catalog?.current?.model || '尚未获取当前模型')}</p></div><span class="tag">${state.hermes.connected?'连接已配置':'未连接'}</span></div><div class="agent-tabs" role="tablist" aria-label="Hermes 管理">${tabs.map(([id,name])=>`<button role="tab" data-agent-tab="${id}" aria-selected="${id===tab}" class="${id===tab?'active':''}">${name}</button>`).join('')}</div>${window.HermesAgent.panel(tab)}`;
       const pending = {
         tools: ['工具权限尚未接入','没有授予 Hermes 读取任务、健康数据或执行代码的权限。','shield-check'],
         skills: ['尚未连接 Skills / MCP 管理','未安装或执行任何远端技能。','blocks'],
@@ -57,7 +57,10 @@ window.LiveUI = (() => {
     if (state.page === 'workspace') return `${title('让想法，继续往前','工作空间')}<div class="workspace-toolbar"><div class="workspace-tabs"><button class="active">${i('code-xml')}代码</button></div><div><button class="icon-button" data-action="window" title="新建窗口" aria-label="新建窗口">${i('panels-top-left')}</button></div></div><div class="editor-shell"><aside class="file-tree"><div class="file-tree-title">我的项目</div><div class="empty-state">尚未关联仓库</div></aside><section class="live-editor"><div class="editor-head">${i('file-code-2')}工作空间<span class="tag">未连接运行环境</span></div>${helpers.empty('尚未连接文件与执行服务', '没有读取本机文件，也没有运行代码。', 'folder-git-2')}<div class="editor-foot">文件 0 · 变更 0</div></section></div><section class="terminal-panel"><div class="terminal-head">${i('terminal')}终端<span class="tag">未连接</span></div><div class="terminal-log">暂无执行输出</div></section>`;
     if (state.page === 'runs') return `${title('每一步，都有迹可循','执行中心')}<div class="runs-summary"><div><strong>0</strong><small>运行中</small></div><div><strong>0</strong><small>待确认</small></div></div>${helpers.empty('暂无执行记录','Hermes 对话与执行尚未接入。','workflow')}`;
     if (state.page === 'health') return `${title('工作之外，也是你','生活与健康')}<div class="health-stats">${[['moon','昨晚睡眠','小时'],['footprints','今日步数','步'],['heart','静息心率','次 / 分']].map(([glyph,label,unit])=>`<section class="health-stat"><span>${i(glyph)}${label}</span><strong>--<small>${unit}</small></strong><p>数据源未连接</p></section>`).join('')}</div><section class="chart-section"><div class="section-head"><h2>健康趋势</h2>${unavailable('暂无授权数据')}</div>${helpers.empty('暂无健康记录','','activity')}</section><div class="health-insight">${i('shield-check')}<div><strong>尚未授权健康数据</strong>HealthKit 与 Health Connect 尚未接入。</div></div>`;
-    if (state.page === 'connections') return `${title('让信息，流动起来','连接与数据')}<div class="setting-row"><div class="setting-copy">${i('bot')}<div><strong>Hermes</strong><p>${state.hermes.connected ? e(state.hermes.origin) : '未连接'}</p></div></div><button class="secondary" data-page="hermes">${i('settings-2')}管理</button></div><div class="setting-row"><div class="setting-copy">${i('calendar-days')}<div><strong>个人待办与日历</strong><p>工作台数据库 · 同一任务记录</p></div></div><span class="tag green">已接入</span></div>${window.HermesAgent.connections()}${modules.slice(0,4).map(([,name,type,glyph])=>`<div class="setting-row"><div class="setting-copy">${i(glyph)}<div><strong>${name}</strong><p>${type}</p></div></div>${unavailable()}</div>`).join('')}`;
+    if (state.page === 'connections') {
+      const card=(name,glyph,description,action)=>`<article class="capability-card"><header><span class="capability-icon tone-mcp">${i(glyph)}</span><div><h3>${e(name)}</h3></div></header><p class="capability-description">${e(description)}</p><footer>${action}</footer></article>`;
+      return `${title('让信息，流动起来','连接与数据')}${window.HermesAgent.addConnection()}<div class="capability-grid connections-grid">${card('Hermes','bot',state.hermes.connected?state.hermes.origin:'未连接',`<span class="tag">${state.hermes.connected?'连接已配置':'未连接'}</span><button class="secondary" data-page="hermes">${i('settings-2')}管理</button>`)}${card('个人待办与日历','calendar-days','工作台数据库 · 同一任务记录',`<span class="tag green">已接入</span><button class="secondary" data-page="calendar">管理</button>`)}${card('健康数据','heart','HealthKit / Health Connect',`<button class="secondary" data-page="health">管理</button>`)}${modules.slice(0,3).map(([,name,type,glyph])=>card(name,glyph,type,unavailable())).join('')}</div>${window.HermesAgent.connections()}`;
+    }
     if (state.page === 'modules') {
       return `${title('你的能力，不止于此','能力中心')}${window.HermesAgent.panel('skills')}`;
     }
@@ -68,6 +71,7 @@ window.LiveUI = (() => {
     const chatPosition = window.HermesChat?.capture();
     const documentPosition = window.HermesDocuments?.capture();
     state = current; helpers = functions;
+    window.HermesAgent?.prepare();
     const V = window.HermesViews;
     Object.assign(V.names, { agent: 'Hermes', chat:'Hermes', calendar: '日历', settings:'设置' });
     window.HermesStore.data = { tasks: current.tasks.map(t=>({...t,done:t.completed})), executions:[], modules:[], user:{ signedIn:true, name:current.me.user.name } };
@@ -104,6 +108,7 @@ window.LiveUI = (() => {
     const serverInput = document.querySelector('#hermes-form input[name="origin"]');
     if (serverInput) { serverInput.placeholder = 'http://主机:端口 或 https://域名'; serverInput.title = '支持已放行的局域网 HTTP；公网使用 HTTPS'; }
     document.title = `${V.names[current.page==='hermes'?'agent':current.page]} · Hermes`;
+    window.HermesAgent?.autoLoad();
   }
   return { render };
 })();
