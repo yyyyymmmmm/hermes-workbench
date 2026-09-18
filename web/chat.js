@@ -72,7 +72,7 @@ window.HermesChat = (() => {
       if(version!==epoch||current?.id!==id)return;
       const event=JSON.parse(message.data);if(event.seq<=cursor)return;cursor=event.seq;
       if(event.type==='model'){current.model=event.model;syncCurrent();context.render();return;}
-      if(event.type==='tool'){current.tools=[...(current.tools||[]),event].slice(-50);syncCurrent();context.render();return;}
+      if(['tool','reasoning','progress'].includes(event.type)){if(event.type==='tool')current.tools=[...(current.tools||[]),event].slice(-50);else if(event.type==='reasoning')current.reasoning=(current.reasoning||'')+event.text;else current.progress=event;syncCurrent();renderActivity(current);return;}
       if(event.type==='delta'||event.type==='output'){
         current.output=event.type==='output'?event.text:current.output+event.text;syncCurrent();
         paintOutput(id,version);
@@ -87,6 +87,14 @@ window.HermesChat = (() => {
   }
   function approvals(){return(current?.requests||[]).map(r=>`<section class="chat-approval"><strong>${e(r.title)}</strong><pre>${e(r.detail)}</pre>${r.unsupported?'<p>请在 Hermes 服务器处理此请求，或中断执行。</p>':r.method==='approval'?`<div class="approval-actions">${r.choices.map(c=>`<button class="secondary" data-run-answer="${r.id}" data-answer="${e(c.value)}" ${r.status==='sending'?'disabled':''}>${e(c.label)}</button>`).join('')}</div>`:`<form class="clarify-form" data-request="${r.id}"><label>回复<input name="answer" required maxlength="4000"></label><button class="primary">发送答复</button></form>`}</section>`).join('');}
   function fileButton(f,attrs){return `<button type="button" class="chat-file" ${attrs} title="${e(f.name)}">${i('file-text')}<span>${e(f.name)}</span><small>${Math.ceil(f.bytes/1024)} KB</small></button>`;}
+  function renderActivity(run){
+    const output=document.querySelector(`[data-output="${run.id}"]`);if(!output||!run.reasoning&&!run.progress&&!run.tools?.length)return;
+    let activity=output.parentElement.querySelector('.run-activity');if(!activity){activity=document.createElement('div');activity.className='run-activity';output.before(activity);}
+    const open=activity.querySelector('.reasoning-panel')?.open||false,toolsOpen=activity.querySelector('.agent-tool-events')?.open||false;
+    const labels={completed:'已完成',failed:'执行失败',stopped:'已中断',unknown:'结果未确认','first-text':'开始返回正文',connecting:'正在连接服务器',submitted:'已提交，等待模型响应',thinking:'模型正在思考','compression.started':'正在整理上下文','compression.completed':'上下文整理完成'};
+    activity.innerHTML=`${run.progress?`<p class="activity-phase">${e(labels[run.progress.phase]||run.progress.phase)} · ${Math.max(0,(run.progress.at-run.created)/1000).toFixed(1)} s</p>`:''}${run.reasoning?`<details class="reasoning-panel" ${open?'open':''}><summary>模型返回的思考</summary><pre></pre></details>`:''}${run.tools?.length?`<details class="agent-tool-events" ${toolsOpen?'open':''}><summary>工具活动 · ${run.tools.length}</summary>${run.tools.map(t=>`<div><code>${e(t.name)}</code><span>${t.status==='tool.start'?'开始调用':t.status==='tool.complete'?'调用完成':'调用失败'}</span></div>`).join('')}</details>`:''}`;
+    const pre=activity.querySelector('.reasoning-panel pre');if(pre)pre.textContent=run.reasoning;
+  }
   function panel(state){
     const connected=state.hermes.connected,busy=current&&active(current.status);
     return `<aside class="assistant ${state.aiDrawer?'drawer':''}" aria-label="Hermes 助手">
@@ -242,7 +250,7 @@ window.HermesChat = (() => {
     for(const run of timeline){if(run.status!=='failed'||!run.outcomeCode)continue;const output=document.querySelector(`[data-output="${run.id}"]`);if(output&&!output.parentElement.querySelector('.run-failure')){const error=document.createElement('p');error.className='run-failure form-error';error.textContent=run.outcomeCode==='DELEGATION_UNAVAILABLE'?'服务器未启用原生 Agent 委派工具，请在工具权限中检查。':run.outcomeCode;output.after(error);}}
     const footer=document.querySelector('.compose-footer');
     if(footer&&!footer.querySelector('[data-chat-action="agent-mode"]')){const button=document.createElement('button');button.type='button';button.className='icon-button agent-mode-toggle';button.dataset.chatAction='agent-mode';button.title=agentMode?'Agent 协作已开启':'Agent 协作';button.setAttribute('aria-label',button.title);button.setAttribute('aria-pressed',String(agentMode));button.disabled=modeLoading||!context.state.hermes.connected||submitting||Boolean(current&&active(current.status));button.innerHTML=i('network');footer.querySelector('[data-chat-action="plan"]')?.before(button);}
-    for(const run of timeline){const output=document.querySelector(`[data-output="${run.id}"]`);if(!output||output.parentElement.querySelector('.agent-tool-events')||!run.tools?.length)continue;const details=document.createElement('details');details.className='agent-tool-events';details.innerHTML=`<summary>工具活动 · ${run.tools.length}</summary>${run.tools.map(t=>`<div><code>${e(t.name)}</code><span>${t.status==='tool.start'?'开始调用':t.status==='tool.complete'?'调用完成':'调用失败'}</span></div>`).join('')}`;output.before(details);}
+    for(const run of timeline)renderActivity(run);
     window.HermesProjectChat?.decorate(timeline);
     window.HermesChatModels?.decorate(Boolean(current),Boolean(submitting||current&&active(current.status)));
     const collaboration=document.querySelector('[data-chat-action="agent-mode"]'),scope=document.querySelector('.chat-context-popover');if(collaboration&&scope){collaboration.classList.add('text-button');collaboration.classList.remove('icon-button');collaboration.innerHTML=i('network')+(agentMode?'本会话优先协作：开启':'本会话优先协作：关闭');scope.append(collaboration);}

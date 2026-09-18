@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
  const {createApp}=await import('../app.mjs'),{testConfig,mockAuth,mockHermes}=await import('./fixtures.mjs');
  const dir=mkdtempSync(join(tmpdir(),'project-files-ui-')),config=testConfig(dir);
  const output='```hermes-files\n'+JSON.stringify({version:1,files:[{name:'report.md',content:'# Report\n<script>throw Error("unsafe")</script>\n'+'Long content '.repeat(300)}]})+'\n```\n\n```hermes-actions\n'+JSON.stringify({version:1,operations:[{op:'create',title:'Review report',scheduledAt:null,minutes:30,timeZone:'UTC'}]})+'\n```';
- const gateway=async(_t,_h,receive)=>({async rpc(method){if(method.startsWith('session.'))return {session_id:'files',running:false};if(method==='prompt.submit'){receive({method:'event',params:{session_id:'files',type:'message.start'}});receive({method:'event',params:{session_id:'files',type:'message.complete',payload:{text:output,status:'complete'}}});}return {};},close(){}});
+ const gateway=async(_t,_h,receive)=>({async rpc(method){if(method.startsWith('session.'))return {session_id:'files',running:false};if(method==='prompt.submit'){receive({method:'event',params:{session_id:'files',type:'message.start'}});receive({method:'event',params:{session_id:'files',type:'reasoning.delta',payload:{text:'Model summary <script>throw Error(1)</script>'}}});receive({method:'event',params:{session_id:'files',type:'tool.started',payload:{name:'search'}}});receive({method:'event',params:{session_id:'files',type:'message.complete',payload:{text:output,status:'complete'}}});}return {};},close(){}});
  const app=await createApp(config,{auth:mockAuth,hermesTransport:mockHermes,gateway});let browser;
  try{
   await app.listen({host:'127.0.0.1',port:0});config.origin=`http://127.0.0.1:${app.server.address().port}`;
@@ -15,6 +15,7 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
   const projectId=randomUUID();await post('/api/projects',{id:projectId,version:0,name:'Reports',description:'',archived:false});
   const run=await post('/api/runs',{text:'Create project report',projectId,projectAccess:{tasks:true,documents:[]},projectConsent:true,executionConsent:true});assert.equal(run.status(),202);
   await page.goto(config.origin);
+  await page.locator('.reasoning-panel summary').click();assert.ok((await page.locator('.reasoning-panel pre').innerText()).includes('<script>'));assert.equal(await page.locator('.agent-tool-events').count(),1);
   await page.locator('[data-project-files]').click();await page.locator('[data-project-file-save]').waitFor();
   assert.ok((await page.locator('.project-context-preview').innerText()).includes('<script>'));
   await page.locator('[data-project-file-save]').click();await page.locator('[data-project-file-save]:disabled').filter({hasText:'已归档'}).waitFor();

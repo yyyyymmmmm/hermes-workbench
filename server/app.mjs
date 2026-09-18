@@ -240,16 +240,20 @@ export async function createApp(config, adapters = {}) {
     streams.add(reply.raw);
     reply.raw.workspaceOwner=owner;
     reply.raw.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-store','Connection':'keep-alive','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});
-    let ticks = 0;
-    const timer = setInterval(() => {
-      if (reply.raw.destroyed) { clearInterval(timer); return; }
-      if (!store.one('SELECT id FROM sessions WHERE id=? AND owner=? AND expires>?',req.session.id,owner,Date.now()) || reply.raw.writableLength > 512*1024) { clearInterval(timer); reply.raw.end(); return; }
+    let scheduled=null,closed=false;
+    const flush=() => {
+      scheduled=null;if(closed||reply.raw.destroyed)return;
+      if (!store.one('SELECT id FROM sessions WHERE id=? AND owner=? AND expires>?',req.session.id,owner,Date.now()) || reply.raw.writableLength > 512*1024) { reply.raw.end(); return; }
       const events = runs.events(owner,id,cursor);
       for (const item of events) { cursor=item.seq; reply.raw.write(`id: ${cursor}\ndata: ${JSON.stringify(item)}\n\n`); }
-      if (++ticks % 30 === 0) reply.raw.write(': heartbeat\n\n');
-    },300);
+      if(events.length===100)wake();
+    };
+    const wake=()=>{if(!scheduled&&!closed)scheduled=setImmediate(flush);};
+    const unsubscribe=runs.subscribe(owner,id,wake);
+    const timer=setInterval(()=>{flush();if(!reply.raw.destroyed)reply.raw.write(': heartbeat\n\n');},15000);
     reply.raw.write(': connected\n\n');
-    reply.raw.on('close',()=>{ clearInterval(timer); streams.delete(reply.raw); });
+    wake();
+    reply.raw.on('close',()=>{closed=true;unsubscribe();clearInterval(timer);clearImmediate(scheduled);streams.delete(reply.raw);});
   });
   app.get('/api/runs/:id/event-batch',async req=>{
     const id=z.uuid().parse(req.params.id),after=z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).parse(req.query.after||0);

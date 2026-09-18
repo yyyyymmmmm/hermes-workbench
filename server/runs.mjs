@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {EventEmitter} from 'node:events';
 import { Fault, hash } from './core.mjs';
 import { openGateway } from './gateway.mjs';
 import { validateAttachments,attachedPrompt } from './attachments.mjs';
@@ -10,6 +11,7 @@ const activeStates = ['queued', 'running', 'approval', 'stopping', 'unknown'];
 const text = (value, length = 8000) => typeof value === 'string' ? value.slice(0, length) : '';
 export function runService(config, store, hermes, gateway = openGateway) {
   const live = new Map();
+  const updates=new EventEmitter();updates.setMaxListeners(0);
   const projects=projectChat(store),actions=workbenchActions(store);
   store.run("UPDATE runs SET status='unknown',updated=? WHERE status IN ('queued','running','approval','stopping')", Date.now());
   store.run("UPDATE run_requests SET status='expired' WHERE status='pending'");
@@ -20,7 +22,8 @@ export function runService(config, store, hermes, gateway = openGateway) {
   };
   function event(id, type, data = {}) {
     const seq = (store.one('SELECT MAX(seq) AS seq FROM run_events WHERE run_id=?', id)?.seq || 0) + 1;
-    store.run('INSERT INTO run_events VALUES(?,?,?)', id, seq, JSON.stringify({ type, ...data }));
+    store.run('INSERT INTO run_events VALUES(?,?,?)', id, seq, JSON.stringify({ type, ...data,at:Date.now() }));
+    updates.emit(id);
   }
   function status(id, value, detail = '') {
     store.run('UPDATE runs SET status=?,updated=? WHERE id=?', value, Date.now(), id);
@@ -31,6 +34,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
     if (!handle || handle.finished) return;
     handle.finished = true; clearTimeout(handle.timer); handle.client?.close(); live.delete(id);
     store.run("UPDATE run_requests SET status='expired' WHERE run_id=? AND status IN ('pending','sending')", id);
+    event(id,'progress',{phase:value});
     status(id, value, detail);
     if(value==='completed'){
       const row=store.one('SELECT owner,output,project_context FROM runs WHERE id=?',id);
@@ -67,6 +71,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
       }
       if(handle.finished)return;
       if(handle.stop){finish(row.id,'stopped');return;}
+      event(row.id,'progress',{phase:'connecting'});
       const ticket = await hermes.ticket(row.owner);
       if (ticket.connectionId !== conversation.connection_id) throw new Fault(409, 'CONNECTION_CHANGED', 'Connection changed; create a new conversation');
       handle.client = await gateway(ticket, config.privateHosts, frame => {
@@ -85,7 +90,13 @@ export function runService(config, store, hermes, gateway = openGateway) {
             event(row.id,'request-expired'); return;
           }
           if (!handle.started) return;
-          if (type === 'message.delta') {
+          if (['reasoning.delta','thinking.delta','reasoning.summary.delta'].includes(type)) {
+            const value=text(payload.text||payload.delta,8000),remaining=32000-(handle.reasoningBytes||0);
+            if(remaining>0&&value){const chunk=value.slice(0,remaining);handle.reasoningBytes=(handle.reasoningBytes||0)+chunk.length;event(row.id,'reasoning',{text:chunk});}
+          } else if (type === 'reasoning.available') event(row.id,'progress',{phase:'thinking'});
+          else if (['compression.started','compression.completed'].includes(type))event(row.id,'progress',{phase:type});
+          else if (type === 'message.delta') {
+            if(!handle.firstText){handle.firstText=true;event(row.id,'progress',{phase:'first-text'});}
             const delta = text(payload.text, 32768);
             if (handle.output.length + delta.length > 200000) { finish(row.id, 'unknown', 'OUTPUT_LIMIT'); return; }
             handle.output += delta;
@@ -99,8 +110,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
             const stopped=handle.stop || ['interrupted','cancelled','canceled','stopped'].includes(payload.status);
             finish(row.id, failed ? 'failed' : stopped ? 'stopped' : 'completed', failed ? 'REMOTE_FAILED' : '');
           } else if (type === 'error') finish(row.id, 'failed', 'REMOTE_FAILED');
-          else if (['tool.start','tool.complete','tool.error'].includes(type)) event(row.id, 'tool', { status:type, name:text(payload.name || payload.tool_name,200) });
-          // Hidden reasoning events are not stored or forwarded.
+          else if (['tool.start','tool.complete','tool.error','tool.started','tool.completed','tool.failed'].includes(type)) event(row.id, 'tool', { status:({'tool.started':'tool.start','tool.completed':'tool.complete','tool.failed':'tool.error'})[type]||type, name:text(payload.name || payload.tool_name,200) });
         } catch { finish(row.id, 'unknown', 'UNSUPPORTED_GATEWAY_EVENT'); }
       }, () => finish(row.id, handle.submitted ? 'unknown' : 'failed', 'GATEWAY_DISCONNECTED'));
       if (handle.finished) { handle.client.close(); return; }
@@ -119,6 +129,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
       if (conversation.remote_id && result.running !== false) throw new Fault(409,'REMOTE_STATE_UNKNOWN','Remote session is running or did not confirm idle');
       if (handle.stop) { finish(row.id,'stopped'); return; }
       handle.submitted = true;
+      event(row.id,'progress',{phase:'submitted'});
       status(row.id,'running');
       const attachments=store.all('SELECT name,content FROM run_attachments WHERE run_id=? ORDER BY position',row.id);
       const mode=row.agent_mode?'\n\n[Workbench collaboration preference for this turn]\nUse the native delegate_task tool when independent subtasks benefit from parallel specialists. Choose appropriate roles (research, implementation, review), provide each child only the authorized context needed, avoid concurrent edits to the same files, and synthesize verified results. Simple tasks do not require delegation. Respect remote concurrency and cost limits and all existing approvals. Do not claim delegation without a real tool call. Report unfinished background work explicitly; do not claim it is complete. Only the parent proposes workbench task mutations. This preference does not grant additional permissions.\n':'';
@@ -129,6 +140,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
     }
   }
   return {
+    subscribe(owner,id,listener){own(owner,id);updates.on(id,listener);return ()=>updates.off(id,listener);},
     active(owner) { return store.one("SELECT id,status FROM runs WHERE owner=? AND status IN ('queued','running','approval','stopping','unknown')", owner); },
     list(owner) {
       return { conversations: store.all('SELECT id,title,category,metadata_version AS version,created,project_id AS projectId FROM conversations WHERE owner=? ORDER BY created DESC LIMIT 100', owner),
@@ -137,6 +149,8 @@ export function runService(config, store, hermes, gateway = openGateway) {
     get(owner,id) {
       const row = own(owner,id);
       return { id:row.id,conversationId:row.conversation_id,prompt:row.prompt,status:row.status,output:row.output,created:row.created,
+        reasoning:store.all("SELECT body FROM run_events WHERE run_id=? AND json_extract(body,'$.type')='reasoning' ORDER BY seq",id).map(r=>JSON.parse(r.body).text).join(''),
+        progress:store.all("SELECT body FROM run_events WHERE run_id=? AND json_extract(body,'$.type')='progress' ORDER BY seq DESC LIMIT 1",id).map(r=>JSON.parse(r.body))[0]||null,
         agentMode:Boolean(row.agent_mode),
         agentProfile:store.one('SELECT agent_profile FROM conversations WHERE owner=? AND id=?',owner,row.conversation_id)?.agent_profile||'default',
         outcomeCode:JSON.parse(store.one("SELECT body FROM run_events WHERE run_id=? AND json_extract(body,'$.type')='status' ORDER BY seq DESC LIMIT 1",id)?.body||'{}').detail||'',

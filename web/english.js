@@ -1,4 +1,11 @@
 window.HermesEnglish={
+"开始返回正文":"First response text received",
+"正在连接服务器":"Connecting to server",
+"已提交，等待模型响应":"Submitted, awaiting model response",
+"模型正在思考":"Model is thinking",
+"正在整理上下文":"Compressing context",
+"上下文整理完成":"Context compression completed",
+"模型返回的思考":"Model-provided reasoning",
 "会话授权":"Session authorization",
 "授权本次会话":"Authorize this session",
 "消息、所选附件和已授权的项目资料将发送至：":"Messages, selected attachments and authorized project data will be sent to:",
