@@ -1,0 +1,14 @@
+const {chromium}=require(process.env.PLAYWRIGHT_PATH||'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=require('node:fs'),{join}=require('node:path'),{tmpdir}=require('node:os');
+(async()=>{
+ const {createApp}=await import('../app.mjs'),{testConfig,mockAuth,skillFixture}=await import('./fixtures.mjs');const dir=mkdtempSync(join(tmpdir(),'hermes-hub-ui-')),config=testConfig(dir),f=skillFixture(),app=await createApp(config,{auth:mockAuth,hermesTransport:f.transport});let browser;
+ try{
+  await app.listen({host:'127.0.0.1',port:0});config.origin=`http://127.0.0.1:${app.server.address().port}`;browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:960}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+  const login=await context.request.post(config.origin+'/api/auth/login',{headers:{origin:config.origin},data:{username:'hub-user',password:'test-password'}}),session=await login.json(),headers={origin:config.origin,'x-csrf-token':session.csrf};await context.request.post(config.origin+'/api/hermes/connect',{headers,data:{origin:'https://hermes.example.test',username:'remote-user',password:'hermes-test-password'}});
+  await page.goto(config.origin);await page.locator('.sidebar [data-page=modules]').click();await page.getByRole('tab',{name:'Skills Hub',exact:true}).click();await page.getByRole('button',{name:'搜索',exact:true}).click();await page.getByRole('button',{name:'预览与扫描',exact:true}).click();await page.locator('.skill-review').waitFor();
+  mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/skills-hub-desktop.png'});await page.setViewportSize({width:360,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'test-results/skills-hub-mobile.png'});
+  await page.getByRole('button',{name:'安装到服务器',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.skill-review'));assert.equal(f.state.writes,1);await page.getByRole('button',{name:'已安装 · 查看',exact:true}).waitFor();
+  f.state.installed=false;f.state.unsafe=true;await page.getByRole('button',{name:'搜索',exact:true}).click();await page.getByRole('button',{name:'预览与扫描',exact:true}).click();await page.locator('.skill-verdict.danger').waitFor();assert.equal(await page.getByRole('button',{name:'安装到服务器',exact:true}).isDisabled(),true);assert.equal(f.state.writes,1);assert.deepEqual(errors,[]);
+  console.log('PASS: skill search, preview/scan, confirmed installation, readback, unsafe blocking and mobile');
+ }finally{await browser?.close();await app.close();rmSync(dir,{recursive:true,force:true});}
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,0 +1,47 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {randomUUID} from 'node:crypto';
+import {createApp} from '../app.mjs';
+import {testConfig,mockAuth,mockGateway} from './fixtures.mjs';
+import {profileFixture} from './profile-fixture.mjs';
+test('profiles: verified writes, scoped tools/models, admission, immutable conversation profile and exact RPC routing',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'hermes-profiles-')),config=testConfig(dir),f=profileFixture(),calls=[];
+ const app=await createApp(config,{auth:mockAuth,hermesTransport:f.transport,gateway:async(...args)=>{const g=await mockGateway(...args),rpc=g.rpc;g.rpc=(method,params)=>{calls.push({method,params});return rpc(method,params);};return g;}});
+ const login=async username=>{const r=await app.inject({method:'POST',url:'/api/auth/login',headers:{origin:config.origin},payload:{username,password:'test-password'}});return {origin:config.origin,cookie:r.headers['set-cookie'].split(';')[0],'x-csrf-token':r.json().csrf};};
+ const call=(headers,method,url,payload)=>app.inject({method,url,payload,headers:{...headers,'idempotency-key':randomUUID()}});
+ try{
+  const alice=await login('alice'),bob=await login('bob');for(const h of [alice,bob])await call(h,'POST','/api/hermes/connect',{origin:'https://hermes.example.test',username:'remote-user',password:'hermes-test-password'});
+  const list=await call(alice,'GET','/api/hermes/profiles');assert.equal(list.statusCode,200);assert.doesNotMatch(list.body,/must-not-leak|private\/home|api_key/);
+  const body={action:'create',name:'researcher',description:'Research and verify',confirm:true};
+  assert.equal((await call({...alice,'x-csrf-token':'bad'},'POST','/api/hermes/profiles',body)).statusCode,403);
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',{...body,name:'../escape'})).statusCode,400);
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',body)).statusCode,200);
+  assert.equal(f.writes[0].body.clone_all,false);assert.equal(f.writes[0].body.no_skills,true);
+  let detail=(await call(alice,'GET','/api/hermes/profiles/researcher')).json();
+  const save={action:'soul',name:'researcher',content:'Cite evidence. Do not access private data without permission.',revision:detail.revision,confirm:true};
+  detail=(await call(alice,'POST','/api/hermes/profiles',save)).json();assert.equal(detail.content,save.content);assert.equal(detail.verified,true);
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',save)).statusCode,409);
+  detail=(await call(alice,'POST','/api/hermes/profiles',{action:'tool',name:'researcher',tool:'delegation',enabled:true,revision:detail.revision,confirm:true})).json();assert.equal(detail.tools[0].enabled,true);assert.equal(f.writes.at(-1).body.profile,'researcher');
+  const settings={action:'runtime',name:'researcher',changes:{children:4,maxTurns:80},revision:detail.revision,confirm:true};
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',{...settings,changes:{children:999}})).statusCode,400);
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',{...settings,changes:{api_key:'forbidden'}})).statusCode,400);
+  detail=(await call(alice,'POST','/api/hermes/profiles',settings)).json();assert.equal(detail.runtime.children,4);assert.deepEqual(f.writes.at(-1).body,{config:{delegation:{max_concurrent_children:4},agent:{max_turns:80}}});assert.doesNotMatch(JSON.stringify(detail),/must-not-leak/);
+  const models=(await call(alice,'POST','/api/hermes/models/refresh',{profile:'researcher'})).json();assert.equal((await call(alice,'POST','/api/hermes/model',{profile:'researcher',model:'fixture-model-b',provider:'test-provider',expected:models.current,confirm:true})).statusCode,200);assert.equal(f.profiles.get('default').model,'fixture-model-a');
+  detail=(await call(alice,'GET','/api/hermes/profiles/researcher')).json();
+  detail=(await call(alice,'POST','/api/hermes/profiles',{action:'availability',name:'researcher',enabled:false,revision:detail.revision,confirm:true})).json();
+  assert.equal((await call(alice,'POST','/api/runs',{agentProfile:'researcher',text:'hello',executionConsent:true})).json().error.code,'PROFILE_DISABLED');
+  assert.equal((await call(bob,'GET','/api/hermes/profiles/researcher')).json().enabled,true);
+  await call(alice,'POST','/api/hermes/profiles',{action:'availability',name:'researcher',enabled:true,revision:detail.revision,confirm:true});
+  const run=(await call(alice,'POST','/api/runs',{agentProfile:'researcher',text:'hello',executionConsent:true})).json();await new Promise(r=>setTimeout(r,160));assert.equal((await call(alice,'GET',`/api/runs/${run.id}`)).json().agentProfile,'researcher');
+  assert.equal(calls.find(c=>c.method==='session.create').params.profile,'researcher');assert.equal(calls.find(c=>c.method==='prompt.submit').params.profile,'researcher');
+  assert.equal((await call(alice,'POST','/api/runs',{conversationId:run.conversationId,agentProfile:'default',text:'next'})).json().error.code,'PROFILE_IMMUTABLE');
+  const held=(await call(alice,'POST','/api/runs',{conversationId:run.conversationId,agentProfile:'researcher',text:'hold'})).json();await new Promise(r=>setTimeout(r,120));assert.equal(calls.find(c=>c.method==='session.resume').params.profile,'researcher');
+  assert.equal((await call(bob,'POST','/api/hermes/profiles',{...body,name:'blocked'})).json().error.code,'RUN_ACTIVE');
+  await call(alice,'POST',`/api/runs/${held.id}/interrupt`);assert.equal(calls.find(c=>c.method==='session.interrupt').params.profile,'researcher');
+  detail=(await call(alice,'GET','/api/hermes/profiles/researcher')).json();f.unverified(true);
+  assert.equal((await call(alice,'POST','/api/hermes/profiles',{...save,content:'new',revision:detail.revision})).json().error.code,'PROFILE_UNVERIFIED');
+ }finally{await app.close();rmSync(dir,{recursive:true,force:true});}
+});

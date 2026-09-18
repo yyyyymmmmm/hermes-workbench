@@ -1,0 +1,28 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.runtime/
+coverage/
+test-results/
+playwright-report/
+dist/
+*.log
+# External authentication service reference includes deployment credentials.
+/api/
+
+# Signing credentials and private deployment material.
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+*.sqlite
+*.sqlite-*
+*.db
+id_ed25519
+id_rsa
+google-services.json
+GoogleService-Info.plist
