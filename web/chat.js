@@ -258,7 +258,7 @@ window.HermesChat = (() => {
   function draftMessage(text){draft=text;context.render();document.querySelector('#live-chat-form textarea')?.focus();}
   async function prepareExternalAgent(text){
     if(submitting||current&&active(current.status)){context.notify('请先结束或核对当前执行。');return false;}
-    if((draft||files.length)&&!confirm('开始独立的环境检查对话？未发送的消息和附件将被清除。'))return false;
+    if((draft||files.length)&&!confirm('放弃当前未发送的消息和附件？'))return false;
     draft='';files=[];await action({dataset:{chatAction:'new'}});agentProfile='default';agentMode=false;draft=text;
     context.state.chatExpanded=innerWidth>760;context.state.aiHidden=false;context.state.aiDrawer=innerWidth<=1080;if(innerWidth<=760)context.state.page='chat';
     context.render();document.querySelector('#live-chat-form textarea')?.focus();return true;

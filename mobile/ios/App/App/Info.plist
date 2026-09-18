@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Read today's steps when you request them. Sharing with your selected workspace website requires separate confirmation.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Read the next seven days of calendar titles and times when you request them.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Read the next seven days of calendar titles and times after confirming your workspace website. This feature does not modify events.</string>
   <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>

@@ -68,7 +68,7 @@ async function api(path, { method = 'GET', body, key } = {}) {
   }
   return data;
 }
-function reset() { generation++; window.HermesTaskPlan?.reset(); window.HermesProjects?.reset();state.workspaceView='projects'; window.HermesChat?.reset(); window.HermesDocuments?.reset(); window.HermesAgent?.reset(); recognition?.abort(); state.me = null; state.tasks = []; state.devices = []; state.hermes = { connected: false }; state.page = 'home'; state.search = ''; state.filter = 'all'; $('#editor').close(); render(); }
+function reset() { generation++; window.HermesDeviceData?.reset(); window.HermesTaskPlan?.reset(); window.HermesProjects?.reset();state.workspaceView='projects'; window.HermesChat?.reset(); window.HermesDocuments?.reset(); window.HermesAgent?.reset(); recognition?.abort(); state.me = null; state.tasks = []; state.devices = []; state.hermes = { connected: false }; state.page = 'home'; state.search = ''; state.filter = 'all'; $('#editor').close(); render(); }
 function login() {
   return `<main class="login"><div class="brand">${brand}</div><section class="login-form"><div class="eyebrow">YOUR PERSONAL WORKSPACE</div><h1>回到你的工作与生活</h1><p>登录 Hermes 工作台</p><form id="login-form"><label>账号<input name="username" autocomplete="username" required maxlength="100" autofocus></label><label>密码<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label><label>设备名称<input name="device" value="${esc(/Mobi/.test(navigator.userAgent) ? '我的手机' : '我的电脑')}" required maxlength="80"></label><div class="form-error" role="alert"></div><button class="primary" type="submit">登录 ${icon('arrow-right')}</button></form><div class="auth-links"><button data-action="register">创建账号</button><button data-action="recover">忘记密码？</button></div></section><footer class="login-footer"><span class="secure">${icon('lock-keyhole')} 账户安全 · 私人空间</span><span>Hermes Workbench / 0.1</span></footer></main>`;
 }
@@ -289,5 +289,6 @@ window.HermesTaskPlan.configure({state,api,refresh,notify,changed:()=>channel?.p
 window.HermesAgent.configure({state,api,render,notify});
 window.HermesProfiles.configure({state,api,render,notify});
 window.HermesExternalAgents.configure({state,api,render,notify});
+window.HermesDeviceData.configure({state,render,notify});
 window.HermesSkillsHub.configure({state,api,render,notify});
 (async () => { try { state.me = await api('/me'); await refresh(); } catch (error) { if (error.code !== 'AUTH_REQUIRED') notify(error.message); } render(); })();
