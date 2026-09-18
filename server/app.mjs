@@ -270,6 +270,7 @@ export async function createApp(config, adapters = {}) {
     '/themes.css': ['../web/themes.css', 'text/css; charset=utf-8'],
     '/settings.js': ['../web/settings.js', 'application/javascript; charset=utf-8'],
     '/device-data.js': ['../web/device-data.js', 'application/javascript; charset=utf-8'],
+    '/device-data.css': ['../web/device-data.css', 'text/css; charset=utf-8'],
     '/agent.js': ['../web/agent.js', 'application/javascript; charset=utf-8'],
     '/english.js': ['../web/english.js', 'application/javascript; charset=utf-8'],
     '/i18n.js': ['../web/i18n.js', 'application/javascript; charset=utf-8'],
