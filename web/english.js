@@ -1,4 +1,6 @@
 window.HermesEnglish={
+"微软 Fluent":"Microsoft Fluent",
+"关闭导航":"Close navigation",
 "运行记录":"Run history",
 "运行记录暂不可用":"Run history is currently unavailable",
 "暂无运行记录":"No run history",

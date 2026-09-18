@@ -278,3 +278,11 @@ dialog{color:var(--ink);background:var(--surface);border:1px solid var(--line);b
 @media(prefers-reduced-motion:reduce){.capability-card,.capability-card summary svg{transition:none}.capability-details{animation:none}}
 .content-field{display:flex;flex-direction:column;gap:12px;font-size:12px;padding:18px 0}.content-field textarea{width:100%;line-height:1.8;font-family:inherit;background:var(--field);color:var(--ink)}.schedule-editor{border-block:1px solid var(--line);padding:20px 0;margin:12px 0 28px}.schedule-fields{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px 0}.schedule-fields label{display:flex;flex-direction:column;gap:8px;min-width:0;font-size:12px}.schedule-fields input,.schedule-fields textarea{width:100%;background:var(--field);color:var(--ink)}.schedule-prompt{grid-column:1/-1}.schedule-editor>.setting-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.capability-primary{margin-top:auto;display:flex;justify-content:flex-end}
 @media(max-width:760px){.schedule-fields{grid-template-columns:1fr}}
+/* Global navigation must remain above the conversation drawer. */
+:root{--layer-assistant:45;--layer-nav-scrim:60;--layer-navigation:70}
+.body-layout>.assistant.drawer{z-index:var(--layer-assistant)}
+.sidebar{z-index:var(--layer-navigation)}
+.nav-overlay.open{z-index:var(--layer-nav-scrim)}
+.sidebar-close{display:none}
+@media(min-width:761px) and (max-width:1080px){.body-layout.chat-expanded>.assistant.drawer{left:220px;right:0;width:calc(100% - 220px)}}
+@media(max-width:760px){.sidebar-close{display:grid;position:absolute;right:8px;top:16px;place-items:center;width:40px;height:40px}.sidebar .brand{padding-right:36px}.sidebar .brand>span:last-child{display:none}.sidebar.open{box-shadow:8px 0 32px #0000001a}}

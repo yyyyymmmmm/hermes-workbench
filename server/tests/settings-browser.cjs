@@ -10,7 +10,7 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
   await page.locator('[data-action=rename-device]').click();await page.locator('#device-name-form [name=device]').fill('Personal laptop');await page.locator('#device-name-form [type=submit]').click();await page.locator('.device strong').filter({hasText:'Personal laptop'}).waitFor();
   for(const width of [1440,390,360]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`test-results/account-${width}.png`,fullPage:true,animations:'disabled'});}
   await page.setViewportSize({width:1440,height:1000});await page.locator('.sidebar [data-page=settings]').click();
-  for(const theme of ['classic','minimal','dark','blue','red','pink']){await page.locator(`input[name=theme][value=${theme}]`).check();assert.equal(await page.locator('html').getAttribute('data-theme'),theme);await page.screenshot({path:`test-results/theme-${theme}.png`,fullPage:true,animations:'disabled'});}
+  for(const theme of ['classic','minimal','dark','blue','red','pink','fluent']){await page.locator(`input[name=theme][value=${theme}]`).check();assert.equal(await page.locator('html').getAttribute('data-theme'),theme);await page.screenshot({path:`test-results/theme-${theme}.png`,fullPage:true,animations:'disabled'});}
   await page.locator('input[name=theme][value=classic]').check();for(const width of [390,360]){await page.setViewportSize({width,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`test-results/classic-${width}.png`,fullPage:true,animations:'disabled'});}await page.setViewportSize({width:1440,height:1000});
   await page.locator('#reduce-motion').check();await page.locator('#display-language').selectOption('en');await page.waitForLoadState('load');await page.getByRole('heading',{name:'Hello, theme-user'}).waitFor();assert.equal(await page.locator('html').getAttribute('lang'),'en');
   const untranslated=[];
@@ -23,6 +23,6 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
   await page.locator('.sidebar .nav [data-page=settings]').click();
   await page.locator('input[name=theme][value=dark]').check();await page.screenshot({path:'test-results/settings-english-dark.png',fullPage:true,animations:'disabled'});
   for(const width of [390,360]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`test-results/settings-english-${width}.png`,fullPage:true,animations:'disabled'});}
-  assert.deepEqual(errors,[]);console.log('PASS: six themes, persisted language, English across all pages, motion, desktop/mobile');
+  assert.deepEqual(errors,[]);console.log('PASS: seven themes, persisted language, English across all pages, motion, desktop/mobile');
  }finally{await browser?.close();await app.close();rmSync(dir,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

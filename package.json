@@ -10,7 +10,7 @@
     "start": "node --env-file-if-exists=.env.local server/main.mjs",
     "dev": "node --watch --env-file-if-exists=.env.local server/main.mjs",
     "test": "node --test server/tests/*.test.mjs",
-    "test:e2e": "node server/tests/browser.cjs && node server/tests/documents-browser.cjs && node server/tests/settings-browser.cjs && node server/tests/projects-browser.cjs && node server/tests/task-plan-browser.cjs && node server/tests/skills-hub-browser.cjs && node server/tests/agent-config-browser.cjs && node server/tests/chat-ux-browser.cjs && node server/tests/project-chat-browser.cjs && node server/tests/design-browser.cjs",
+    "test:e2e": "node server/tests/browser.cjs && node server/tests/documents-browser.cjs && node server/tests/settings-browser.cjs && node server/tests/projects-browser.cjs && node server/tests/task-plan-browser.cjs && node server/tests/skills-hub-browser.cjs && node server/tests/agent-config-browser.cjs && node server/tests/chat-ux-browser.cjs && node server/tests/project-chat-browser.cjs && node server/tests/design-browser.cjs && node server/tests/fluent-navigation-browser.cjs",
     "desktop:dev": "electron desktop",
     "desktop:build": "node server/scripts/build-desktop.mjs",
     "test:desktop": "node server/tests/desktop.cjs",

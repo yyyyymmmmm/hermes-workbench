@@ -177,7 +177,7 @@ document.addEventListener('click', async event => {
   if(button.dataset.calendarAdd){state.date=button.dataset.calendarAdd;edit();return;}
   if (button.dataset.day) { const d = new Date(`${state.date}T12:00:00`),step=Number(button.dataset.day); if(state.calendarView==='month'){d.setDate(1);d.setMonth(d.getMonth()+step);}else d.setDate(d.getDate()+step*(state.calendarView==='week'?7:1)); state.date = localDate(d); render(); return; }
   const action = button.dataset.action;
-  if (action === 'menu' || action === 'close-menu') { state.menu = action === 'menu'; state.aiDrawer = false; render(); return; }
+  if (action === 'menu' || action === 'close-menu') { state.menu = action === 'menu'; state.aiDrawer = false; render(); if(!state.menu)document.querySelector('[data-action=menu]')?.focus({preventScroll:true}); return; }
   if (action === 'toggle-ai') { if(innerWidth<=760){if(state.page==='chat'){state.page=state.chatReturnPage||'home';state.aiDrawer=false;}else{state.chatReturnPage=state.page;state.page='chat';state.aiDrawer=true;}state.chatExpanded=false;}else if (innerWidth <= 1080) state.aiDrawer = !state.aiDrawer; else state.aiHidden = !state.aiHidden; render(); return; }
   if (action === 'assistant-context' || action === 'assistant-chat') { state.aiContext = action === 'assistant-context'; render(); return; }
   if (action === 'search-tasks') { state.page = 'tasks'; render(); $('#search').focus(); return; }

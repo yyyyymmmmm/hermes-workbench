@@ -283,6 +283,7 @@ export async function createApp(config, adapters = {}) {
     '/skills-hub.css': ['../web/skills-hub.css', 'text/css; charset=utf-8'],
     '/chat-workspace.css': ['../web/chat-workspace.css', 'text/css; charset=utf-8'],
     '/design-system.css': ['../web/design-system.css', 'text/css; charset=utf-8'],
+    '/fluent.css': ['../web/fluent.css', 'text/css; charset=utf-8'],
     '/experience.js': ['../web/experience.js', 'text/javascript; charset=utf-8'],
     '/project-chat.js': ['../web/project-chat.js', 'text/javascript; charset=utf-8'],
     '/chat-models.js': ['../web/chat-models.js', 'text/javascript; charset=utf-8'],

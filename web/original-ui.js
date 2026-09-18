@@ -3,6 +3,29 @@
 window.HermesStore = { data: { tasks: [], executions: [], modules: [], user: { signedIn: false } } };
 window.LiveUI = (() => {
   let state, helpers;
+  const mobileNavigation=matchMedia('(max-width:760px)');
+  function syncNavigation(){
+    const sidebar=document.querySelector('.sidebar'),main=document.querySelector('.main-shell');
+    if(!sidebar||!main||!state)return;
+    const modal=mobileNavigation.matches&&state.menu;
+    main.inert=modal;
+    sidebar.inert=mobileNavigation.matches&&!state.menu;
+    if(modal){sidebar.setAttribute('role','dialog');sidebar.setAttribute('aria-modal','true');}
+    else{sidebar.removeAttribute('role');sidebar.removeAttribute('aria-modal');}
+    sidebar.setAttribute('aria-label',I18n.t('主导航'));
+    document.querySelector('[data-action=menu]')?.setAttribute('aria-expanded',String(Boolean(modal)));
+    if(modal&&!sidebar.contains(document.activeElement))sidebar.querySelector('.nav button.active,.nav button')?.focus({preventScroll:true});
+  }
+  mobileNavigation.addEventListener('change',syncNavigation);
+  document.addEventListener('keydown',event=>{
+    if(!mobileNavigation.matches||!state?.menu)return;
+    if(event.key==='Escape'){event.preventDefault();document.querySelector('.sidebar [data-action=close-menu]')?.click();return;}
+    if(event.key!=='Tab')return;
+    const elements=[...document.querySelectorAll('.sidebar a[href],.sidebar button:not(:disabled)')].filter(el=>el.getClientRects().length);
+    const first=elements[0],last=elements.at(-1);
+    if(event.shiftKey&&(document.activeElement===first||!elements.includes(document.activeElement))){event.preventDefault();last?.focus();}
+    else if(!event.shiftKey&&(document.activeElement===last||!elements.includes(document.activeElement))){event.preventDefault();first?.focus();}
+  });
   const e = value => window.HermesViews.esc(value);
   const i = name => window.HermesViews.icon(name);
   const title = (text, sub = '') => `<div class="page-header"><div><div class="eyebrow">${i('command')} PERSONAL, CONNECTED.</div><h1>${text}</h1></div></div>${sub ? `<p class="subtitle">${sub}</p>` : ''}`;
@@ -70,6 +93,7 @@ window.LiveUI = (() => {
     const experience = window.HermesExperience?.capture(current);
     const chatPosition = window.HermesChat?.capture();
     const documentPosition = window.HermesDocuments?.capture();
+    const navFocus=document.activeElement?.closest('.sidebar')?.contains(document.activeElement)?document.activeElement.dataset.page:null;
     state = current; helpers = functions;
     window.HermesAgent?.prepare();
     const V = window.HermesViews;
@@ -79,6 +103,7 @@ window.LiveUI = (() => {
     template.innerHTML = V.shell({ page:current.page==='hermes'?'agent':current.page, menu:current.menu, aiHidden:current.aiHidden,
       renderPage:()=> current.page==='home'?home()+healthOverview():extraPage(), renderAssistant:assistant });
     const root = template.content;
+    const closeNavigation=document.createElement('button');closeNavigation.className='icon-button sidebar-close';closeNavigation.dataset.action='close-menu';closeNavigation.setAttribute('aria-label',I18n.t('关闭导航'));closeNavigation.innerHTML=i('x');root.querySelector('.sidebar').append(closeNavigation);
     const settingsButton=document.createElement('button');settingsButton.dataset.page='settings';settingsButton.className=current.page==='settings'?'active':'';settingsButton.innerHTML=`${i('settings-2')}设置`;root.querySelector('.sidebar-bottom .nav').append(settingsButton);
     root.querySelectorAll('[data-page="agent"]').forEach(el=>el.dataset.page='hermes');
     root.querySelectorAll('[data-action="login"],[data-action="space"]').forEach(el=>{delete el.dataset.action;el.dataset.page='account';});
@@ -102,6 +127,8 @@ window.LiveUI = (() => {
     if (experience) window.HermesExperience.restore(experience);
     if (chatPosition) window.HermesChat.restore(chatPosition);
     if (documentPosition) window.HermesDocuments.restore(documentPosition);
+    if(current.menu&&navFocus)document.querySelector('.sidebar [data-page="'+CSS.escape(navFocus)+'"]')?.focus({preventScroll:true});
+    syncNavigation();
     if(window.HermesChat && document.querySelector('.chat-recovery')) {
       const button=document.createElement('button');button.className='text-button danger';button.dataset.chatAction='abandon';button.textContent='结束本地跟踪';document.querySelector('.chat-recovery').append(button);
     }

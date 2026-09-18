@@ -1,0 +1,61 @@
+/* Fluent-inspired theme. Opt-in only; application layout and behavior remain shared. */
+:root[data-theme=fluent]{
+  --surface:#ffffff;--panel:#fafafa;--sidebar:#f3f3f3;--ink:#242424;--muted:#616161;
+  --line:#dedede;--soft:#ebf3fc;--field:#ffffff;--hover:#f0f0f0;--accent:#0f6cbd;
+  --on-accent:#ffffff;--success:#107c41;--danger:#b10e1c;--radius:8px;
+  --fluent-canvas:#f3f3f3;--fluent-shadow:0 2px 4px #0000000a,0 0 2px #0000001a;
+  --fluent-overlay-shadow:0 8px 24px #00000018,0 2px 8px #00000012;
+  --ease:cubic-bezier(.1,.9,.2,1);
+  --ui-font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif;
+}
+.swatch-fluent{background:#f3f3f3;color:#0f6cbd;border-color:#d1d1d1;box-shadow:inset 16px 0 #e8e8e8,inset 19px 0 #0f6cbd,inset -12px 0 #fff}
+:root[data-theme=fluent] body,:root[data-theme=fluent] .shell,:root[data-theme=fluent] .main-shell{background:var(--fluent-canvas)}
+:root[data-theme=fluent] .sidebar{background:#f3f3f3;border-right-color:#0000000a}
+:root[data-theme=fluent] .topbar{background:#f3f3f3;border-bottom-color:#0000000a}
+:root[data-theme=fluent] .body-layout>.content{background:var(--surface)}
+:root[data-theme=fluent] .body-layout>.assistant{background:var(--panel);border-left-color:var(--line)}
+:root[data-theme=fluent] .body-layout.chat-expanded>.assistant{background:var(--surface)}
+:root[data-theme=fluent] .brand-mark{background:var(--accent);color:var(--on-accent);box-shadow:0 1px 2px #00000014}
+:root[data-theme=fluent] .space-switch{background:#ffffffb3;border-color:#0000000a;box-shadow:0 1px 2px #00000008}
+:root[data-theme=fluent] .nav button{border-radius:4px;transition:background 120ms ease,color 120ms ease}
+:root[data-theme=fluent] .nav button.active{background:#ffffffb3;color:var(--ink);box-shadow:0 1px 2px #00000006}
+:root[data-theme=fluent] .nav button.active:before{width:3px;top:10px;bottom:10px;background:var(--accent)}
+:root[data-theme=fluent] .nav button:hover{background:#ffffff80}
+:root[data-theme=fluent] .primary,:root[data-theme=fluent] .send{background:var(--accent);color:var(--on-accent);box-shadow:inset 0 1px #ffffff18,inset 0 -1px #00000020;transition:background 120ms ease,box-shadow 120ms ease}
+:root[data-theme=fluent] .primary:hover,:root[data-theme=fluent] .send:hover{background:#115ea3;filter:none}
+:root[data-theme=fluent] .primary:active,:root[data-theme=fluent] .send:active{background:#0f548c;box-shadow:none}
+:root[data-theme=fluent] .secondary{background:#fff;border:1px solid #d1d1d1;border-bottom-color:#b3b3b3;border-radius:4px;box-shadow:0 1px 1px #00000003}
+:root[data-theme=fluent] .secondary:hover{background:#f5f5f5}
+:root[data-theme=fluent] input:not([type=checkbox]):not([type=radio]),:root[data-theme=fluent] select,:root[data-theme=fluent] textarea{border-radius:4px;border-color:#d1d1d1;border-bottom-color:#8a8a8a;transition:border-color 120ms ease,box-shadow 120ms ease}
+:root[data-theme=fluent] input:focus-visible,:root[data-theme=fluent] textarea:focus-visible,:root[data-theme=fluent] select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+:root[data-theme=fluent] button:focus-visible,:root[data-theme=fluent] a:focus-visible,:root[data-theme=fluent] summary:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+:root[data-theme=fluent] input[type=checkbox],:root[data-theme=fluent] input[type=radio]{accent-color:var(--accent)}
+:root[data-theme=fluent] .capability-card,:root[data-theme=fluent] .module-card,:root[data-theme=fluent] .recent-project{background:#fff;border-color:#e5e5e5;border-radius:8px;box-shadow:var(--fluent-shadow)}
+:root[data-theme=fluent] .capability-card:hover,:root[data-theme=fluent] .recent-project:hover{border-color:#c7c7c7;box-shadow:0 4px 10px #0000000a,0 0 2px #0000001a}
+:root[data-theme=fluent] .agent-tabs button,:root[data-theme=fluent] .workspace-switch button{border-radius:4px}
+:root[data-theme=fluent] .agent-tabs button.active,:root[data-theme=fluent] .workspace-switch [aria-selected=true]{background:var(--soft);color:#0f548c;border-bottom-color:var(--accent)}
+:root[data-theme=fluent] .assistant .chat-input{border-radius:8px;border-color:#d1d1d1;border-bottom-color:#8a8a8a;background:#fff;box-shadow:var(--fluent-shadow)}
+:root[data-theme=fluent] .assistant .chat-input:focus-within{border-bottom-color:var(--accent);box-shadow:inset 0 -1px var(--accent),var(--fluent-shadow)}
+:root[data-theme=fluent] .assistant .chat-input textarea{border:0;box-shadow:none;outline:none}
+:root[data-theme=fluent] .assistant .user-message{background:#f0f0f0}
+:root[data-theme=fluent] .interaction-card,:root[data-theme=fluent] .chat-approval{border-color:#d1d1d1;border-radius:8px;box-shadow:var(--fluent-shadow)}
+:root[data-theme=fluent] dialog,:root[data-theme=fluent] .chat-session-drawer,:root[data-theme=fluent] .chat-context-popover{background:#fafafa;border:1px solid #ffffffb3;box-shadow:var(--fluent-overlay-shadow);border-radius:8px}
+:root[data-theme=fluent] .tag{background:#f5f5f5;border-color:#e5e5e5;color:#616161}
+:root[data-theme=fluent] .tag.green{background:#f1faf1;color:#0e6027;border-color:#c5e9c5}
+:root[data-theme=fluent] .mobile-nav{background:#f3f3f3;border-color:#0000000a}
+:root[data-theme=fluent] .mobile-nav button.active{background:#e5e5e5;color:#0f548c}
+@supports(backdrop-filter:blur(20px)){
+  :root[data-theme=fluent] .topbar,:root[data-theme=fluent] .sidebar,:root[data-theme=fluent] .mobile-nav{background:#f3f3f3ed;backdrop-filter:blur(20px)}
+  :root[data-theme=fluent] .chat-session-drawer,:root[data-theme=fluent] .chat-context-popover{background:#fafafaf5;backdrop-filter:blur(20px)}
+}
+@media(min-width:1000px){
+  :root[data-theme=fluent] .preferences{max-width:960px}
+  :root[data-theme=fluent] .preferences section{display:grid;grid-template-columns:140px minmax(0,1fr);column-gap:28px;padding:28px 0}
+  :root[data-theme=fluent] .preferences section>h2{grid-column:1;grid-row:1;margin:0;line-height:1.8}
+  :root[data-theme=fluent] .preferences section>:not(h2){grid-column:2;min-width:0}
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-theme=fluent] .topbar,:root[data-theme=fluent] .sidebar,:root[data-theme=fluent] .mobile-nav{background:#f3f3f3;backdrop-filter:none}
+  :root[data-theme=fluent] .chat-session-drawer,:root[data-theme=fluent] .chat-context-popover{background:#fafafa;backdrop-filter:none}
+}
+@media(forced-colors:active){:root[data-theme=fluent] .nav button.active:before{background:Highlight}:root[data-theme=fluent] .capability-card{border-color:CanvasText}}
