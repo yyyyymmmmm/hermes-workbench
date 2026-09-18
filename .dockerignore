@@ -1,0 +1,11 @@
+**
+!package.json
+!package-lock.json
+!server/
+!server/**
+!web/
+!web/**
+!ui/
+!ui/**
+server/tests
+ui/screenshots

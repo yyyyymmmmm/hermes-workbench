@@ -1,0 +1,30 @@
+services:
+  workbench:
+    build: ..
+    restart: unless-stopped
+    init: true
+    environment:
+      PUBLIC_ORIGIN: https://${WORKBENCH_DOMAIN:?Set the public workbench hostname}
+      AUTH_BASE_URL: ${AUTH_BASE_URL:-https://api.didichou.site/api.php}
+      AUTH_APP_ID: ${AUTH_APP_ID:-10016}
+      AUTH_APP_SECRET: ${AUTH_APP_SECRET:?Set the server-only auth secret}
+    volumes:
+      - workbench-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      WORKBENCH_DOMAIN: ${WORKBENCH_DOMAIN:?Set the public workbench hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [workbench]
+volumes:
+  workbench-data:
+  caddy-data:
+  caddy-config:

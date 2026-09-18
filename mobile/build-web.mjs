@@ -3,9 +3,11 @@ import {join,resolve,dirname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {localizedSource} from '../server/localize.mjs';
+import {clientService} from '../server/client-service.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),out=join(root,'mobile/www');
 const compiled=new Set(['app','original-ui','chat','project-chat','chat-models','profiles','external-agents','documents','settings','agent','projects','task-plan','skills-hub']);
 const assets=new Map();
+assets.set('service-config.json',JSON.stringify(clientService()));
 for(const name of readdirSync(join(root,'web')))if(/\.(js|css)$/.test(name))assets.set(name,compiled.has(name.replace(/\.js$/,''))?localizedSource(join(root,'web',name)):readFileSync(join(root,'web',name)));
 for(const [target,source] of Object.entries({'terminal/styles.css':'ui/terminal/styles.css','terminal/views.js':'ui/terminal/views.js','assets/lucide.min.js':'ui/assets/lucide.min.js','assets/lucide-LICENSE':'ui/assets/lucide-LICENSE','assets/avatar.jpg':'ui/assets/avatar.jpg','assets/marked.js':'node_modules/marked/lib/marked.umd.js','assets/purify.js':'node_modules/dompurify/dist/purify.min.js'}))assets.set(target,target==='terminal/views.js'?localizedSource(join(root,source)):readFileSync(join(root,source)));
 assets.set('native-transport.js',readFileSync(join(root,'mobile/native-transport.js')));
@@ -15,4 +17,4 @@ assets.set('index.html',readFileSync(join(root,'web/index.html'),'utf8').replace
 const manifest={version:JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,files:{}};
 for(const [name,data]of assets){mkdirSync(dirname(join(out,name)),{recursive:true});writeFileSync(join(out,name),data);manifest.files[name]=createHash('sha256').update(data).digest('hex');}
 writeFileSync(join(out,'bundle-manifest.json'),JSON.stringify(manifest,null,2));
-console.log(`Bundled ${assets.size} local assets; no server address or credentials included.`);
+console.log(`Bundled ${assets.size} local assets; official endpoint is build-configured; no credentials included.`);

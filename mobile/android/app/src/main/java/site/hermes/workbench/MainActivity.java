@@ -44,7 +44,7 @@ public class MainActivity extends ComponentActivity {
             return insets;
         });
         Button settings = new Button(this);
-        settings.setText(label("Workspace server", "工作台服务器"));
+        settings.setText(label("Advanced: self-hosting", "高级：自托管设置"));
         settings.setOnClickListener(v -> chooseServer());
         layout.addView(settings);
         web = new WebView(this);
@@ -82,9 +82,16 @@ public class MainActivity extends ComponentActivity {
         });
         layout.addView(web, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(layout);
-        origin = getPreferences(MODE_PRIVATE).getString("origin", "");
-        installBridge();web.loadUrl(LOCAL+"/");
-        if (origin.isEmpty()) chooseServer(); else http=new WorkspaceHttp(origin);
+        String official="";
+        try(java.io.InputStream input=getAssets().open("public/service-config.json")){
+            java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] buffer=new byte[1024];int count;
+            while((count=input.read(buffer))!=-1){bytes.write(buffer,0,count);if(bytes.size()>8192)throw new IllegalArgumentException();}
+            String value=new JSONObject(bytes.toString("UTF-8")).optString("origin","");
+            if(!value.isEmpty())official=normalized(value,true);
+        }catch(Exception ignored){}
+        origin = getPreferences(MODE_PRIVATE).getString("origin", official);
+        installBridge();if(!origin.isEmpty())http=new WorkspaceHttp(origin);web.loadUrl(LOCAL+"/");
+        if (origin.isEmpty()) chooseServer();
     }
     private boolean sameOrigin(String value) {
         try { return normalized(value, false).equals(LOCAL); } catch(Exception e) { return false; }

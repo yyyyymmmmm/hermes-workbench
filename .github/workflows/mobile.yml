@@ -1,4 +1,7 @@
 name: Mobile Preview
+env:
+  WORKBENCH_SERVICE_ORIGIN: ${{ vars.WORKBENCH_SERVICE_ORIGIN }}
+  WORKBENCH_RELEASE: ${{ vars.WORKBENCH_RELEASE }}
 on:
   push:
     branches: [main]

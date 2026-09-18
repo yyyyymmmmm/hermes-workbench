@@ -27,3 +27,5 @@ id_rsa
 google-services.json
 GoogleService-Info.plist
 /mobile/www/
+/desktop/service-config.json
+/deploy/.env

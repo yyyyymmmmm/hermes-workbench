@@ -6,7 +6,8 @@ Only the bundled local main frame can request one of the allowlisted
 read operations. Each request requires native recipient/range confirmation and
 system permission. Navigating or changing server invalidates pending results.
 
-Users choose their own HTTPS workbench server at runtime. No NAS hostname,
+Official builds use the configured hosted HTTPS origin and open login directly.
+Advanced settings retain self-hosted server selection. No NAS hostname,
 workbench domain, password or Google OAuth credential is compiled into the app.
 After workbench login, users configure their own Hermes connection in the existing
 Hermes settings. A Hermes-only API endpoint is not a workbench server.

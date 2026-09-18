@@ -59,8 +59,11 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
             web.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "server.rack"), style: .plain, target: self, action: #selector(chooseServer))
-        navigationItem.rightBarButtonItem?.accessibilityLabel = text("Workspace server", "工作台服务器")
-        if let saved = UserDefaults.standard.string(forKey: "workbenchOrigin"), let url = normalized(saved, rootOnly: true) {
+        navigationItem.rightBarButtonItem?.accessibilityLabel = text("Advanced: self-hosting", "高级：自托管设置")
+        let configURL = Bundle.main.url(forResource: "service-config", withExtension: "json", subdirectory: "public")
+        let config = configURL.flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String:Any]
+        let selectedOrigin = UserDefaults.standard.string(forKey: "workbenchOrigin") ?? (config?["origin"] as? String)
+        if let saved = selectedOrigin, let url = normalized(saved, rootOnly: true) {
             origin = url; http=WorkspaceHTTP(url)
         } else { DispatchQueue.main.async { self.chooseServer() } }
         web.load(URLRequest(url:localURL))

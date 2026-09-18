@@ -19,7 +19,7 @@ function createWorkspace(){
     try{const target=new URL(url);if(target.origin===origin)createWorkspace();else if(['https:','http:'].includes(target.protocol)&&!target.username&&!target.password)void dialog.showMessageBox(win,{type:'question',message:'Open external link? / 打开外部链接？',detail:target.href,buttons:['Cancel / 取消','Open / 打开'],defaultId:0,cancelId:0}).then(({response})=>{if(response===1)void shell.openExternal(target.href);});}catch{}
     return {action:'deny'};
   });
-  win.webContents.on('did-fail-load',(_event,code,_description,url,isMainFrame)=>{if(isMainFrame&&code!==-3){win.show();void dialog.showMessageBox(win,{type:'error',message:'Workspace unavailable / 工作台服务暂不可用',detail:'Start your workspace server or choose another server from the File menu. / 请启动工作台服务，或在文件菜单更换服务器。',buttons:['OK']});}});
+  win.webContents.on('did-fail-load',(_event,code,_description,url,isMainFrame)=>{if(isMainFrame&&code!==-3){win.show();void dialog.showMessageBox(win,{type:'error',message:'Workspace unavailable / 工作台服务暂不可用',detail:'Check your network and try again. Self-hosted connections are available in Advanced settings. / 请检查网络后重试，自托管连接可在高级设置中修改。',buttons:['OK']});}});
   void win.loadURL(origin);
   return win;
 }
@@ -32,18 +32,19 @@ function setup(){
 if(!app.requestSingleInstanceLock())app.quit();else{
   app.on('second-instance',()=>{const win=BrowserWindow.getAllWindows()[0];if(win){if(win.isMinimized())win.restore();win.focus();}});
   app.whenReady().then(()=>{
+    try{const official=JSON.parse(readFileSync(join(__dirname,'service-config.json'),'utf8')).origin;if(official&&new URL(official).protocol==='https:')origin=validOrigin(official);}catch{}
     try{origin=validOrigin(JSON.parse(readFileSync(preferences(),'utf8')).origin);}catch{}
     const partition=session.fromPartition('persist:hermes-workspace');
     partition.setPermissionRequestHandler((_contents,_permission,callback)=>callback(false));
     partition.setPermissionCheckHandler(()=>false);
-    ipcMain.handle('workspace:initial',event=>{if(event.senderFrame.url!==setupURL)throw new Error('Forbidden');return origin||'http://127.0.0.1:4317';});
+    ipcMain.handle('workspace:initial',event=>{if(event.senderFrame.url!==setupURL)throw new Error('Forbidden');return origin||'';});
     ipcMain.handle('workspace:connect',async(event,value)=>{
       if(event.senderFrame.url!==setupURL)throw new Error('Forbidden');
       try{const next=validOrigin(value);origin=next;mkdirSync(app.getPath('userData'),{recursive:true});writeFileSync(preferences(),JSON.stringify({origin}),{mode:0o600});
         for(const win of BrowserWindow.getAllWindows())if(win!==setupWindow)win.close();createWorkspace();setupWindow.close();return {ok:true};
       }catch{return {ok:false};}
     });
-    Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'File / 文件',submenu:[{label:'New window / 新建窗口',accelerator:'CmdOrCtrl+Shift+N',click:()=>origin?createWorkspace():setup()},{label:'Workspace server / 工作台服务器',click:setup},{type:'separator'},{role:'quit'}]},{label:'Edit / 编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'View / 视图',submenu:[{role:'reload'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}]));
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{label:'File / 文件',submenu:[{label:'New window / 新建窗口',accelerator:'CmdOrCtrl+Shift+N',click:()=>origin?createWorkspace():setup()},{label:'Advanced: self-hosting / 高级：自托管设置',click:setup},{type:'separator'},{role:'quit'}]},{label:'Edit / 编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},{label:'View / 视图',submenu:[{role:'reload'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{role:'togglefullscreen'}]}]));
     if(origin)createWorkspace();else setup();
   });
   app.on('window-all-closed',()=>app.quit());
