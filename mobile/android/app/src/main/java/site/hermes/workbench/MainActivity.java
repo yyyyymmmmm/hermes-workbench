@@ -139,7 +139,7 @@ public class MainActivity extends ComponentActivity {
                 };
                 if(method.equals("calendar.compose")){composeCalendar(request.optJSONObject("event"),reply);return;}
                 new AlertDialog.Builder(this).setTitle(label("Share device data?", "共享设备数据？"))
-                    .setMessage(requestedOrigin+"\n"+(method.equals("health.read")?label("Today's steps / latest values in 7 days: ", "今日步数／近七天最新指标：")+android.text.TextUtils.join(", ",keys):label("Calendar titles and times for the next 7 days (up to 100)", "未来七天的日历标题和时间（最多100条）"))+"\n"+label("Data will be available to this website. Allow this read?", "数据将交给此网站。允许本次读取？"))
+                    .setMessage(requestedOrigin+"\n"+(method.equals("health.read")?label("Today's steps / latest values in 7 days: ", "今日步数／近七天最新指标：")+android.text.TextUtils.join(", ",keys):label("Calendar titles and times for the next 7 days (up to 100)", "未来七天的日历标题和时间（最多100条）"))+"\n"+label("Only the built-in interface receives this read. Sending to Hermes requires separate confirmation.", "本次数据仅交给内置界面。发送给 Hermes 需要另行确认。"))
                     .setNegativeButton(android.R.string.cancel,(d,w)->reply.accept(error("CANCELLED")))
                     .setOnCancelListener(d->reply.accept(error("CANCELLED")))
                     .setPositiveButton(android.R.string.ok,(d,w)->{

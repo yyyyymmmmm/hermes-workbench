@@ -149,7 +149,7 @@ final class WorkspaceViewController: UIViewController, WKNavigationDelegate, WKS
         } }
         if method == "calendar.compose" { composeCalendar(request["event"] as? [String:Any], reply); return }
         let scope = method == "health.read" ? text("Today's steps / latest values in 7 days: ", "今日步数／近七天最新指标：") + keys.joined(separator: ", ") : text("Calendar titles and times for the next 7 days (up to 100)", "未来七天的日历标题和时间（最多100条）")
-        let alert = UIAlertController(title: text("Share device data?", "共享设备数据？"), message: requestedOrigin.absoluteString + "\n" + scope + "\n" + text("Data will be available to this website. Allow this read?", "数据将交给此网站。允许本次读取？"), preferredStyle: .alert)
+        let alert = UIAlertController(title: text("Read device data?", "读取设备数据？"), message: requestedOrigin.absoluteString + "\n" + scope + "\n" + text("Only the built-in interface receives this read. Sending to Hermes requires separate confirmation.", "本次数据仅交给内置界面。发送给 Hermes 需要另行确认。"), preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: text("Cancel", "取消"), style: .cancel) { _ in reply(["error":"CANCELLED"]) })
         alert.addAction(UIAlertAction(title: text("Allow", "允许"), style: .default) { _ in
             guard generation == self.documentGeneration else { reply(["error":"CANCELLED"]); return }

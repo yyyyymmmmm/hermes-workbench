@@ -1,8 +1,8 @@
 # Mobile preview
 
 Android and iOS native projects are generated with Capacitor 8.5.2. The current
-entry points use a native WebView with a narrow health/calendar message bridge.
-Only the selected HTTPS origin's main frame can request one of the allowlisted
+entry points load the packaged UI and resources, never a remote server homepage.
+Only the bundled local main frame can request one of the allowlisted
 read operations. Each request requires native recipient/range confirmation and
 system permission. Navigating or changing server invalidates pending results.
 
@@ -11,14 +11,18 @@ workbench domain, password or Google OAuth credential is compiled into the app.
 After workbench login, users configure their own Hermes connection in the existing
 Hermes settings. A Hermes-only API endpoint is not a workbench server.
 
-Server preferences store only an origin. Web sessions use the platform's WebView
-cookie store. Native server switching requires confirmation; it does not revoke
+Server preferences store only an origin. API sessions use isolated in-memory native
+cookie stores, never JavaScript/localStorage. Restarting the app requires login;
+secure persistent login is not implemented yet. Switching server clears the native
+cookie store and reloads the bundled UI. It does not revoke
 the previous server session. Sign out first on shared devices. HTTP and mixed
 content are disallowed. External HTTPS navigation requires user confirmation.
 
 ## Build
 
-Run npm ci in this directory, then npm run sync:android or npm run sync:ios.
+Run npm ci at the repository root and in this directory, then npm run build:web
+here followed by npm run sync:android or npm run sync:ios. Do not sync stale www
+assets. The generated bundle includes localized UI, asset hashes and dependencies.
 Android requires SDK 36 and Java 21; run bash gradlew assembleDebug in android.
 iOS requires Xcode on macOS; GitHub Mobile Preview runs a simulator build without
 Apple signing. Simulator artifacts cannot be installed on an iPhone.
@@ -46,13 +50,20 @@ iOS reports the EventKit editor's saved/cancelled action. Neither result links a
 remote event to a task or enables two-way sync; repeating may create duplicates.
 
 The web UI retains results in memory, clears them on logout, and does not persist
-or upload them automatically. Native confirmation discloses that selected results
-are delivered to website JavaScript: a third-party workspace can behave differently.
+or upload them automatically. Selected results are delivered only to bundled UI
+JavaScript, not remote website code. No health records enter the API automatically.
 Sharing a health summary prepares an independent Hermes draft after recipient and
 content confirmation; it does not send automatically. Past remote copies cannot be
 recalled by revoking device permissions. Keep shared summaries non-diagnostic.
 
 ## Remaining work
+
+The matching updated backend is required for /api/runs/:id/event-batch. Mobile
+incremental replies use cursor-based polling (one second while active), not native
+SSE. HTTP mutations are never automatically retried, even on timeout. Requests are
+restricted to the selected HTTPS origin and /api paths; redirects are rejected.
+Read bodies are bounded to 8 MiB. API response cookies are not forwarded to JS.
+UI assets can load without connectivity, but tasks/documents are not cached offline.
 
 Exercise, additional health types, direct calendar sync, native attachment
 pickers, native voice, offline data and background sync remain separate work.

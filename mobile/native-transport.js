@@ -2,7 +2,7 @@
 (()=>{
  const pending=new Map();
  if(!crypto.randomUUID)crypto.randomUUID=()=>{const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=[...b].map(v=>v.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;};
- function receive(raw){let value=raw;if(typeof raw==='string'){try{value=JSON.parse(raw);}catch{return;}}const p=pending.get(value?.id);if(!p)return;pending.delete(value.id);p.clean();value.error?p.reject(new TypeError(value.error)):p.resolve(new Response(Uint8Array.from(atob(value.body||''),c=>c.charCodeAt(0)),{status:value.status,headers:{'content-type':value.contentType||'application/json'}}));}
+ function receive(raw){let value=raw;if(typeof raw==='string'){try{value=JSON.parse(raw);}catch{return;}}const p=pending.get(value?.id);if(!p)return;pending.delete(value.id);p.clean();value.error?p.reject(new TypeError(value.error)):p.resolve(new Response([204,205,304].includes(value.status)?null:Uint8Array.from(atob(value.body||''),c=>c.charCodeAt(0)),{status:value.status,headers:{'content-type':value.contentType||'application/json'}}));}
  window.addEventListener('hermes-http-result',event=>receive(event.detail));
  window.fetch=(input,options={})=>new Promise((resolve,reject)=>{
   const url=new URL(typeof input==='string'?input:input.url,location.href);
