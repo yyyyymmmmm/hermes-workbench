@@ -1,4 +1,6 @@
 window.HermesEnglish={
+"连接已建立":"Connection established",
+"已复用会话连接":"Session connection reused",
 "开始返回正文":"First response text received",
 "正在连接服务器":"Connecting to server",
 "已提交，等待模型响应":"Submitted, awaiting model response",

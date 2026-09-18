@@ -91,7 +91,7 @@ window.HermesChat = (() => {
     const output=document.querySelector(`[data-output="${run.id}"]`);if(!output||!run.reasoning&&!run.progress&&!run.tools?.length)return;
     let activity=output.parentElement.querySelector('.run-activity');if(!activity){activity=document.createElement('div');activity.className='run-activity';output.before(activity);}
     const open=activity.querySelector('.reasoning-panel')?.open||false,toolsOpen=activity.querySelector('.agent-tool-events')?.open||false;
-    const labels={completed:'已完成',failed:'执行失败',stopped:'已中断',unknown:'结果未确认','first-text':'开始返回正文',connecting:'正在连接服务器',submitted:'已提交，等待模型响应',thinking:'模型正在思考','compression.started':'正在整理上下文','compression.completed':'上下文整理完成'};
+    const labels={connected:'连接已建立','connection-reused':'已复用会话连接',completed:'已完成',failed:'执行失败',stopped:'已中断',unknown:'结果未确认','first-text':'开始返回正文',connecting:'正在连接服务器',submitted:'已提交，等待模型响应',thinking:'模型正在思考','compression.started':'正在整理上下文','compression.completed':'上下文整理完成'};
     activity.innerHTML=`${run.progress?`<p class="activity-phase">${e(labels[run.progress.phase]||run.progress.phase)} · ${Math.max(0,(run.progress.at-run.created)/1000).toFixed(1)} s</p>`:''}${run.reasoning?`<details class="reasoning-panel" ${open?'open':''}><summary>模型返回的思考</summary><pre></pre></details>`:''}${run.tools?.length?`<details class="agent-tool-events" ${toolsOpen?'open':''}><summary>工具活动 · ${run.tools.length}</summary>${run.tools.map(t=>`<div><code>${e(t.name)}</code><span>${t.status==='tool.start'?'开始调用':t.status==='tool.complete'?'调用完成':'调用失败'}</span></div>`).join('')}</details>`:''}`;
     const pre=activity.querySelector('.reasoning-panel pre');if(pre)pre.textContent=run.reasoning;
   }
