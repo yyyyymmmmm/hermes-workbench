@@ -280,35 +280,44 @@ private final class WorkspaceHTTP:NSObject,URLSessionDataDelegate {
     private let origin:URL
     private var session:URLSession!
     private let lock=NSLock()
-    private struct Pending {var data=Data();var response:HTTPURLResponse?;let reply:([String:Any])->Void}
+    private struct Pending {var data=Data();var response:HTTPURLResponse?;let id:String;let streaming:Bool;let task:URLSessionDataTask;let reply:([String:Any])->Void}
     private var pending=[Int:Pending]()
     init(_ origin:URL){self.origin=origin;super.init();let config=URLSessionConfiguration.ephemeral;config.timeoutIntervalForRequest=75;config.timeoutIntervalForResource=85;config.urlCache=nil;session=URLSession(configuration:config,delegate:self,delegateQueue:nil)}
     func close(){session.invalidateAndCancel()}
     func request(_ input:[String:Any],_ reply:@escaping ([String:Any])->Void){
+        if input["cancel"] as? Bool == true {lock.lock();let task=pending.values.first(where:{$0.id == input["id"] as? String})?.task;lock.unlock();task?.cancel();return}
         guard let path=input["path"] as? String,let parts=URLComponents(string:path),parts.scheme==nil,parts.host==nil,parts.fragment==nil,
               parts.percentEncodedPath.range(of:"^/api/[A-Za-z0-9/_-]+$",options:.regularExpression) != nil,
               let target=URL(string:path,relativeTo:origin)?.absoluteURL,
               let method=input["method"] as? String,["GET","POST","PATCH","DELETE","PUT"].contains(method),
               let body=input["body"] as? String,body.utf8.count<=524288 else{reply(["error":"INVALID_REQUEST"]);return}
         var request=URLRequest(url:target);request.httpMethod=method;request.setValue(origin.absoluteString,forHTTPHeaderField:"Origin")
+        let streaming=input["stream"] as? Bool == true
+        guard !streaming || (method == "GET" && parts.path.range(of:"^/api/runs/[a-fA-F0-9-]{36}/events$",options:.regularExpression) != nil) else{reply(["error":"INVALID_REQUEST"]);return}
         let headers=input["headers"] as? [String:String] ?? [:]
         for name in ["content-type","x-csrf-token","x-workspace-user","idempotency-key"]{if let value=headers[name]{guard value.count<=4096,!value.contains("\r"),!value.contains("\n") else{reply(["error":"INVALID_REQUEST"]);return};request.setValue(value,forHTTPHeaderField:name)}}
         if method != "GET" && !body.isEmpty{request.httpBody=body.data(using:.utf8)}
         lock.lock();guard pending.count<16 else{lock.unlock();reply(["error":"TOO_MANY_REQUESTS"]);return}
-        let task=session.dataTask(with:request);pending[task.taskIdentifier]=Pending(reply:reply);lock.unlock();task.resume()
+        if streaming && pending.values.filter({$0.streaming}).count>=2{lock.unlock();reply(["error":"TOO_MANY_STREAMS"]);return}
+        let task=session.dataTask(with:request);pending[task.taskIdentifier]=Pending(id:input["id"] as? String ?? "",streaming:streaming,task:task,reply:reply);lock.unlock();task.resume()
     }
     func urlSession(_ session:URLSession,task:URLSessionTask,willPerformHTTPRedirection response:HTTPURLResponse,newRequest request:URLRequest,completionHandler:@escaping(URLRequest?)->Void){completionHandler(nil)}
     func urlSession(_ session:URLSession,dataTask:URLSessionDataTask,didReceive response:URLResponse,completionHandler:@escaping(URLSession.ResponseDisposition)->Void){
         guard let response=response as? HTTPURLResponse,!(300..<400).contains(response.statusCode),response.expectedContentLength<=8*1024*1024 else{completionHandler(.cancel);return}
-        lock.lock();pending[dataTask.taskIdentifier]?.response=response;lock.unlock();completionHandler(.allow)
+        lock.lock();pending[dataTask.taskIdentifier]?.response=response;let item=pending[dataTask.taskIdentifier];lock.unlock()
+        if item?.streaming == true{guard response.statusCode==200,response.value(forHTTPHeaderField:"Content-Type")?.hasPrefix("text/event-stream")==true else{completionHandler(.cancel);return};item?.reply(["stream":true,"status":200])}
+        completionHandler(.allow)
     }
     func urlSession(_ session:URLSession,dataTask:URLSessionDataTask,didReceive data:Data){
+        lock.lock();let stream=pending[dataTask.taskIdentifier];lock.unlock()
+        if stream?.streaming == true{stream?.reply(["stream":true,"body":data.base64EncodedString()]);return}
         lock.lock();let size=(pending[dataTask.taskIdentifier]?.data.count ?? 0)+data.count
         if size<=8*1024*1024{pending[dataTask.taskIdentifier]?.data.append(data)};lock.unlock();if size>8*1024*1024{dataTask.cancel()}
     }
     func urlSession(_ session:URLSession,task:URLSessionTask,didCompleteWithError error:Error?){
         lock.lock();let item=pending.removeValue(forKey:task.taskIdentifier);lock.unlock();guard let item=item else{return}
         guard error==nil,let response=item.response else{item.reply(["error":"CONNECTION_FAILED"]);return}
+        if item.streaming{item.reply(["stream":true,"done":true]);return}
         item.reply(["status":response.statusCode,"contentType":response.value(forHTTPHeaderField:"Content-Type") ?? "application/json","body":item.data.base64EncodedString()])
     }
 }

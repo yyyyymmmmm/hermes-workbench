@@ -59,9 +59,10 @@ recalled by revoking device permissions. Keep shared summaries non-diagnostic.
 
 ## Remaining work
 
-The matching updated backend is required for /api/runs/:id/event-batch. Mobile
-incremental replies use cursor-based polling (one second while active), not native
-SSE. HTTP mutations are never automatically retried, even on timeout. Requests are
+Mobile incremental replies use native SSE on /api/runs/:id/events. Native HTTP
+resource timeouts rotate connections; reconnect uses the last received cursor.
+Only event subscriptions reconnect. HTTP mutations are never automatically retried.
+Requests are
 restricted to the selected HTTPS origin and /api paths; redirects are rejected.
 Read bodies are bounded to 8 MiB. API response cookies are not forwarded to JS.
 UI assets can load without connectivity, but tasks/documents are not cached offline.

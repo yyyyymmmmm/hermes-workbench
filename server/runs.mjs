@@ -6,11 +6,13 @@ import { validateAttachments,attachedPrompt } from './attachments.mjs';
 import {projectChat,projectPrompt} from './project-chat.mjs';
 import {workbenchActions} from './workbench-actions.mjs';
 import {filePrompt} from './project-files.mjs';
+import {gatewayPool} from './gateway-pool.mjs';
 
 const activeStates = ['queued', 'running', 'approval', 'stopping', 'unknown'];
 const text = (value, length = 8000) => typeof value === 'string' ? value.slice(0, length) : '';
 export function runService(config, store, hermes, gateway = openGateway) {
   const live = new Map();
+  const pool=gatewayPool((ticket,receive,closed)=>gateway(ticket,config.privateHosts,receive,closed));
   const updates=new EventEmitter();updates.setMaxListeners(0);
   const projects=projectChat(store),actions=workbenchActions(store);
   store.run("UPDATE runs SET status='unknown',updated=? WHERE status IN ('queued','running','approval','stopping')", Date.now());
@@ -32,7 +34,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
   function finish(id, value, detail = '') {
     const handle = live.get(id);
     if (!handle || handle.finished) return;
-    handle.finished = true; clearTimeout(handle.timer); handle.client?.close(); live.delete(id);
+    handle.finished = true; clearTimeout(handle.timer); handle.client?.close({reuse:value==='completed'}); live.delete(id);
     store.run("UPDATE run_requests SET status='expired' WHERE run_id=? AND status IN ('pending','sending')", id);
     event(id,'progress',{phase:value});
     status(id, value, detail);
@@ -72,9 +74,11 @@ export function runService(config, store, hermes, gateway = openGateway) {
       if(handle.finished)return;
       if(handle.stop){finish(row.id,'stopped');return;}
       event(row.id,'progress',{phase:'connecting'});
-      const ticket = await hermes.ticket(row.owner);
-      if (ticket.connectionId !== conversation.connection_id) throw new Fault(409, 'CONNECTION_CHANGED', 'Connection changed; create a new conversation');
-      handle.client = await gateway(ticket, config.privateHosts, frame => {
+      handle.client = await pool.acquire(JSON.stringify([row.owner,conversation.connection_id,conversation.id,agentProfile]),async()=>{
+        const ticket=await hermes.ticket(row.owner);
+        if(ticket.connectionId!==conversation.connection_id)throw new Fault(409,'CONNECTION_CHANGED','Connection changed; create a new conversation');
+        return ticket;
+      }, frame => {
         if (handle.finished) return;
         try {
           const payload = frame.params?.payload || frame.params || {};
@@ -114,6 +118,7 @@ export function runService(config, store, hermes, gateway = openGateway) {
         } catch { finish(row.id, 'unknown', 'UNSUPPORTED_GATEWAY_EVENT'); }
       }, () => finish(row.id, handle.submitted ? 'unknown' : 'failed', 'GATEWAY_DISCONNECTED'));
       if (handle.finished) { handle.client.close(); return; }
+      event(row.id,'progress',{phase:handle.client.reused?'connection-reused':'connected'});
       const result = await handle.client.rpc(conversation.remote_id ? 'session.resume' : 'session.create', {
         ...(conversation.remote_id ? { session_id: conversation.remote_id } : {}), cols:72, source:'desktop', profile:agentProfile
       });
@@ -270,6 +275,6 @@ export function runService(config, store, hermes, gateway = openGateway) {
       status(id,'abandoned','USER_ACKNOWLEDGED_REMOTE_MAY_CONTINUE');
       return this.get(owner,id);
     },
-    close() { for (const id of [...live.keys()]) finish(id,'unknown','WORKBENCH_SHUTDOWN'); }
+    close() { for (const id of [...live.keys()]) finish(id,'unknown','WORKBENCH_SHUTDOWN');pool.close(); }
   };
 }
