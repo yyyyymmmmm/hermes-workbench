@@ -54,7 +54,7 @@ window.HermesProjectChat=(()=>{
   }catch(cause){if(version===epoch)error(cause.message);}
  }
  function decorateFiles(timeline){
-  decorate(timeline);
+  decorateCards(timeline);
   for(const run of timeline){
    if(run.status!=='completed'||!run.projectId)continue;
    const article=document.querySelector(`[data-output="${run.id}"]`)?.closest('.chat-turn');
@@ -67,5 +67,44 @@ window.HermesProjectChat=(()=>{
   }
  }
  document.addEventListener('click',event=>{const button=event.target.closest('[data-project-files]');if(button)void reviewFiles(button.dataset.projectFiles);});
+ const cards=new Map();
+ function drawCard(node,id,entry){
+  const data=entry.data,labels={create:'创建',update:'修改',delete:'删除'};
+  node.innerHTML=`<header>${i(data?.status==='applied'?'circle-check':'list-checks')}<strong>项目任务安排</strong><span class="tag">${e(data?statusLabels[data.status]||data.status:'正在加载')}</span></header><div class="interaction-body">${data?`<ol class="interaction-operations">${data.proposal.operations.map(op=>`<li><span class="tag">${e(labels[op.op])}</span><div><strong>${e(op.title||data.before?.find(t=>t.id===op.id)?.title||op.id)}</strong><small>${op.scheduledAt?e(new Date(op.scheduledAt).toLocaleString(I18n.locale))+' · '+e(op.timeZone):'未安排日历时间'}${op.minutes?' · '+op.minutes+' min':''}</small>${op.op==='update'?`<small>${op.completed?'已完成':'待完成'}</small>`:''}</div></li>`).join('')}</ol><p>仅操作当前项目的工作台任务；有明确时间的任务同步显示在工作台日历，不代表已写入外部日历。</p>`:''}${entry.error?`<p role="alert">${e(entry.error)}</p>`:''}${entry.armed?'<p role="alert">请再次确认。修改过的任务不会被强制覆盖。</p>':''}</div><footer>${data?`<button type="button" class="text-button" data-project-actions="${id}">查看详情</button>${data.status==='pending'?`<button type="button" class="secondary" data-card-op="dismiss">忽略</button><button type="button" class="primary" data-card-op="apply">${entry.armed==='apply'?'确认修改或删除':'确认安排'}</button>`:data.status==='applied'?`<button type="button" class="secondary" data-card-op="undo">${entry.armed==='undo'?'确认撤销':'撤销本次操作'}</button>`:''}${entry.armed?'<button type="button" class="secondary" data-card-op="cancel">取消</button>':''}`:entry.error?'<button type="button" class="secondary" data-card-op="retry">重试</button>':''}</footer>`;
+  node.querySelectorAll('button').forEach(button=>button.disabled=Boolean(entry.busy));
+  node.setAttribute('aria-busy',String(Boolean(entry.busy)));window.lucide?.createIcons();
+ }
+ async function loadCard(id,entry){
+  if(entry.loading)return;entry.loading=true;
+  try{entry.data=await context.api(`/runs/${id}/actions`);entry.error=entry.data.error||'';}catch(cause){entry.error=cause.message;}
+  finally{entry.loading=false;const node=document.querySelector(`[data-operation-card="${id}"]`);if(node&&cards.get(id)===entry)drawCard(node,id,entry);}
+ }
+ function decorateCards(timeline){
+  const owner=context.state.me?.user.id;
+  for(const [id,entry] of cards)if(entry.owner!==owner)cards.delete(id);
+  for(const run of timeline){
+   if(!run.actions)continue;
+   const article=document.querySelector(`[data-output="${run.id}"]`)?.closest('.chat-turn');if(!article)continue;
+   const blocks=window.marked.lexer(run.output||'').filter(token=>token.type==='code'&&token.lang==='hermes-actions');
+   article.querySelectorAll('.chat-output pre code').forEach(code=>{if(blocks.some(block=>block.text.trim()===code.textContent.trim()))code.parentElement.hidden=true;});
+   let entry=cards.get(run.id);if(!entry){entry={owner,data:null,error:'',busy:false,loading:false};cards.set(run.id,entry);}
+   let node=article.querySelector('[data-operation-card]');if(!node){node=document.createElement('section');node.className='interaction-card';node.dataset.operationCard=run.id;article.append(node);}
+   drawCard(node,run.id,entry);
+   if(!entry.busy&&(!entry.data&&!entry.error||entry.data&&entry.data.status!==run.actions))void loadCard(run.id,entry);
+  }
+ }
+ document.addEventListener('click',async event=>{
+  const button=event.target.closest('[data-card-op]'),node=button?.closest('[data-operation-card]');if(!node)return;
+  const id=node.dataset.operationCard,entry=cards.get(id),op=button.dataset.cardOp;
+  if(!entry||entry.busy||entry.owner!==context.state.me?.user.id)return;
+  if(op==='retry'){entry.error='';void loadCard(id,entry);return;}
+  if(op==='cancel'){entry.armed=null;drawCard(node,id,entry);return;}
+  if(!['apply','dismiss','undo'].includes(op))return;
+  if((op==='undo'||op==='apply'&&entry.data.proposal.operations.some(o=>o.op!=='create'))&&entry.armed!==op){entry.armed=op;drawCard(node,id,entry);return;}
+  entry.busy=true;entry.error='';drawCard(node,id,entry);
+  try{const result=await context.api(`/runs/${id}/actions/${op}`,{method:'POST',body:{confirm:true}});if(entry.owner!==context.state.me?.user.id)return;entry.data=result;entry.armed=null;await context.refresh();context.changed();}
+  catch(cause){entry.error=cause.message;}
+  finally{entry.busy=false;const current=document.querySelector(`[data-operation-card="${id}"]`);if(current&&entry.owner===context.state.me?.user.id)drawCard(current,id,entry);}
+ });
  return {configure:c=>context=c,reset,bar,choose,decorate:decorateFiles,welcome};
 })();

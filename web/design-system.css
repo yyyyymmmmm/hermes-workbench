@@ -1,4 +1,25 @@
 /* Product-wide tokens and visual rules. Feature styles retain layout/behavior ownership. */
+.interaction-card{margin:16px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden;font-size:13px;color:var(--ink)}
+.interaction-card>header{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--line)}
+.interaction-card>header>svg{width:18px;height:18px;flex-shrink:0;color:var(--success)}
+.interaction-card>header>strong{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px}
+.interaction-card>header>.tag{flex-shrink:0}
+.interaction-body{padding:16px;line-height:1.7}
+.interaction-body>p{font-size:12px;color:var(--muted);margin:12px 0 0}
+.interaction-body>code{display:block;white-space:normal;overflow-wrap:anywhere;font-size:12px;margin-top:8px}
+.interaction-body>small{display:block;color:var(--muted);margin-top:10px}
+.interaction-operations{list-style:none;padding:0;margin:0;max-height:320px;overflow:auto}
+.interaction-operations>li{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.interaction-operations>li:first-child{padding-top:0}.interaction-operations>li:last-child{border:0;padding-bottom:0}
+.interaction-operations>li>div{min-width:0;flex:1}.interaction-operations strong{font-weight:550;overflow-wrap:anywhere}
+.interaction-operations small{display:block;font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin-top:4px}
+.interaction-card>footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:0 16px 16px}
+.interaction-card>footer .primary{flex:1;min-width:110px;min-height:40px}
+.interaction-card [role=alert]{color:var(--danger)}
+.consent-card>header>svg{color:#b77550}
+.chat-approval{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:16px;margin:16px 0}
+.chat-approval pre{max-height:240px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+.chat-approval .approval-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 /* Classic follows ui/terminal, with darker secondary text for readable controls. */
 :root[data-theme=classic]{--surface:#fff;--panel:#f8f9fc;--sidebar:#f7f7f8;--ink:#24262b;--muted:#68788e;--line:#e3e8f0;--soft:#eef1f7;--field:#fff;--hover:#f1f4f8;--accent:#24262b;--on-accent:#fff;--success:#278163;--danger:#b73347;--radius:7px}
 :root[data-theme=classic] .sidebar .brand-mark{background:#fff0e9;color:#bd593b}
