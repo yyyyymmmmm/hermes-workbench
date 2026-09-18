@@ -30,12 +30,20 @@ availability before publishing to either store.
 
 ## Device data
 
-Six individually selectable read types: today's steps and the most recent weight,
+Seven individually selectable read types: today's steps, past-24-hour asleep-stage
+duration and the most recent weight,
 resting heart rate, body fat, oxygen saturation and blood glucose within seven days.
 Android uses Health Connect (Android 9+); iOS uses HealthKit. Empty HealthKit results
 do not prove authorization was granted. No write or background health permission.
+Sleep summaries clip to the requested window and union overlapping asleep stages
+across sources. Awake, in-bed and unspecified session-only records do not count.
+Missing stages return no data, not zero. Oversized result sets fail instead of
+silently reporting a partial duration. Android unit tests cover clipping and overlap.
 System calendar reads titles and times for the next seven days, capped at 100.
-No event write, task import or two-way sync is implemented by these reads.
+Scheduled workbench tasks can open a prefilled system event editor. Android reports
+only editor_opened, because its calendar intent cannot reliably verify saving.
+iOS reports the EventKit editor's saved/cancelled action. Neither result links a
+remote event to a task or enables two-way sync; repeating may create duplicates.
 
 The web UI retains results in memory, clears them on logout, and does not persist
 or upload them automatically. Native confirmation discloses that selected results
@@ -46,7 +54,7 @@ recalled by revoking device permissions. Keep shared summaries non-diagnostic.
 
 ## Remaining work
 
-Sleep, exercise, additional health types, calendar writes, native attachment
+Exercise, additional health types, direct calendar sync, native attachment
 pickers, native voice, offline data and background sync remain separate work.
 Permission revocation is handled in system settings; clearing web results does
 not revoke OS permissions. Device-level tests with denied/partial/revoked access,
