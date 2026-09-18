@@ -37,5 +37,6 @@ window.HermesDeviceData=(()=>{
   catch(cause){if(context.state.me?.user.id!==owner)return;error=({CANCELLED:t('已取消读取','Read cancelled'),PERMISSION_DENIED:t('系统权限未授予','System permission not granted'),HEALTH_UNAVAILABLE:t('健康服务不可用，请检查 Health Connect 或设备支持。','Health service unavailable; check Health Connect or device support.'),TIMEOUT:t('授权等待超时，请关闭系统弹窗后重试。','Authorization timed out. Close the system dialog before retrying.')})[cause.message]||t('读取未完成，请检查系统权限后重试。','Read failed. Check system permissions and retry.');}
   finally{if(context.state.me?.user.id===owner){busy=false;context.render();}}
  });
- return {configure:c=>context=c,reset,healthPanel,calendarPanel};
+ function overview(){return `<section class="overview-health"><div class="section-head"><h2>${icon('heart-pulse')}${t('生活与健康','Life and health')}</h2><button class="text-button" data-page="health">${t('查看健康','View health')}${icon('arrow-up-right')}</button></div><p>${health?e(health.source)+' · '+e(new Date(health.to).toLocaleString(I18n.locale)):t('尚未读取手机健康数据','Device health data has not been read')}</p></section>`;}
+ return {configure:c=>context=c,reset,healthPanel,calendarPanel,overview};
 })();

@@ -10,8 +10,9 @@ Public visibility was explicitly approved by the owner before the first push.
 - Windows Preview: manually triggered unsigned Electron x64 artifact. This is a
   portable client, not a signed installer, and needs a running workbench server.
   Only the desktop directory and the icon-library license are packaged.
-- Android and iOS: not configured yet; native projects and signing must be added.
-  iOS requires a macOS runner plus Apple signing and distribution credentials.
+- Mobile Preview: Android debug APK and iOS simulator build on native-source changes
+  or manual dispatch. Runtime server selection, no compiled-in NAS address.
+  iPhone installation still requires Apple signing and distribution credentials.
 
 These workflows have not run on GitHub until code is pushed and Actions executes.
 Artifacts are previews, not public releases. No automatic deployment to the NAS.
