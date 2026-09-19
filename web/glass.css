@@ -1,0 +1,80 @@
+/* Glass is opt-in. Opaque defaults also serve browsers without backdrop filtering. */
+:root[data-theme=glass]{
+  --surface:#f8fbfa;--panel:#f2f7f5;--sidebar:#edf4f1;--ink:#203b38;--muted:#506662;
+  --line:#c9d9d3;--field:#ffffff;--hover:#e9f2ee;--soft:#e2efea;--accent:#226c60;
+  --on-accent:#ffffff;--success:#246b43;--danger:#a83248;--radius:8px;
+  --glass-base:linear-gradient(118deg,transparent 0% 17%,#ffffff7a 17.2%,#ffffff0a 35%,transparent 35.2% 64%,#ffffff80 64.2%,#ffffff10 80%,transparent 80.2%),linear-gradient(28deg,#a7d0c7 0%,#e1eeee 30%,#c3d7e8 56%,#e4c9d1 83%,#f1e6e4 100%);
+  --glass-edge:inset 0 1px 0 #ffffff,inset 1px 0 1px #ffffffe0,inset -1px -1px 1px #ffffffb3,inset 0 -2px 3px #354c601a;
+  --glass-shadow:0 8px 24px #293e4a14,0 2px 5px #293e4a12;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+.swatch-glass{color:#226c60;background:linear-gradient(125deg,#dfeee6,#e5edf7 48%,#f3e6e8);border-color:#c9d9d3;box-shadow:inset 0 2px #ffffffe6,inset 0 -8px #ffffff50}
+:root[data-theme=glass] body,:root[data-theme=glass] .shell{background:var(--glass-base)}
+:root[data-theme=glass] .main-shell{background:transparent}
+:root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar,:root[data-theme=glass] .mobile-nav{background:var(--sidebar);border-color:#b6ccc080;box-shadow:var(--glass-edge)}
+:root[data-theme=glass] .body-layout>.content{background:var(--surface)}
+:root[data-theme=glass] .body-layout>.assistant,:root[data-theme=glass] .body-layout.chat-expanded>.assistant{background:var(--panel);border-color:#b6ccc080}
+:root[data-theme=glass] .nav button.active{background:#ffffffb3;color:var(--ink);box-shadow:var(--glass-edge),0 2px 8px #274a4008}
+:root[data-theme=glass] .nav button:hover{background:#ffffff80}
+:root[data-theme=glass] .nav button.active:before{background:var(--accent)}
+:root[data-theme=glass] .brand-mark{background:var(--accent);color:#fff;box-shadow:inset 0 1px #ffffff40,0 3px 8px #226c6026}
+:root[data-theme=glass] .space-switch,:root[data-theme=glass] .global-search{background:#ffffffa6;border-color:#ffffffd9;box-shadow:var(--glass-edge),0 2px 6px #274a4005}
+:root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project{background:var(--surface);border:1px solid #ffffffd9;border-radius:8px;box-shadow:var(--glass-edge),var(--glass-shadow);transition:transform 220ms var(--ease),box-shadow 220ms ease,background-color 160ms ease}
+:root[data-theme=glass] .primary,:root[data-theme=glass] .send{background:var(--accent);color:var(--on-accent);box-shadow:inset 0 1px #ffffff40,0 3px 8px #226c6020;transition:transform 150ms var(--ease),box-shadow 150ms ease,background-color 150ms ease}
+:root[data-theme=glass] .primary:hover,:root[data-theme=glass] .send:hover{background:#18594f;filter:none}
+:root[data-theme=glass] .secondary{background:#ffffffe6;border-color:#c4d4cd;border-radius:6px;box-shadow:inset 0 1px #fff,0 1px 2px #274a4008;transition:transform 150ms var(--ease),background-color 150ms ease,box-shadow 150ms ease}
+:root[data-theme=glass] .secondary:hover{background:#fff}
+:root[data-theme=glass] .primary:active,:root[data-theme=glass] .secondary:active,:root[data-theme=glass] .send:active{transform:scale(.98);box-shadow:inset 0 1px 3px #00000012}
+:root[data-theme=glass] input,:root[data-theme=glass] textarea,:root[data-theme=glass] select{background:var(--field);border-color:#c1d1ca}
+:root[data-theme=glass] input[type=checkbox],:root[data-theme=glass] input[type=radio]{accent-color:var(--accent)}
+:root[data-theme=glass] button:focus-visible,:root[data-theme=glass] a:focus-visible,:root[data-theme=glass] summary:focus-visible{outline:2px solid #18594f;outline-offset:3px}
+:root[data-theme=glass] .assistant .chat-input{background:#fffffff2;border-color:#fff;border-radius:8px;box-shadow:var(--glass-edge),0 6px 20px #274a4014;transition:border-color 160ms ease,box-shadow 160ms ease}
+:root[data-theme=glass] .assistant .chat-input:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px #226c6012,0 6px 20px #274a4014}
+:root[data-theme=glass] .assistant .chat-input textarea{background:transparent}
+:root[data-theme=glass] .assistant .user-message{background:#ffffffd9}
+:root[data-theme=glass] .interaction-card,:root[data-theme=glass] .chat-approval{background:#fffffff2;border-color:#fff;box-shadow:var(--glass-edge),var(--glass-shadow)}
+:root[data-theme=glass] dialog,:root[data-theme=glass] .chat-session-drawer,:root[data-theme=glass] .chat-context-popover{background:#f8fbfa;border:1px solid #fff;border-radius:8px;box-shadow:var(--glass-edge),0 16px 48px #203b3829;transition-timing-function:var(--ease)}
+:root[data-theme=glass] .markdown-body pre,:root[data-theme=glass] .document-content{background:#f8fbfa}
+:root[data-theme=glass] .tag{background:#ffffffb3;color:var(--muted);border-color:#c9d9d3}
+:root[data-theme=glass] .tag.green{background:#e6f3e9;color:#246b43;border-color:#b5d4be}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar,:root[data-theme=glass] .mobile-nav{background:#ffffff70;-webkit-backdrop-filter:blur(20px) saturate(125%);backdrop-filter:blur(20px) saturate(125%)}
+  :root[data-theme=glass] .body-layout>.content{background:#ffffff45}
+  :root[data-theme=glass] .body-layout>.assistant,:root[data-theme=glass] .body-layout.chat-expanded>.assistant{background:#ffffff66}
+  :root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project{background:#ffffffad}
+  :root[data-theme=glass] .chat-session-drawer,:root[data-theme=glass] .chat-context-popover{background:#f8fbfaeb;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+}
+@media(hover:hover) and (pointer:fine){
+  :root[data-theme=glass] .capability-card:hover,:root[data-theme=glass] .module-card:hover,:root[data-theme=glass] .recent-project:hover{transform:translateY(-2px);background:#ffffffd9;box-shadow:var(--glass-edge),0 8px 24px #274a401a}
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar,:root[data-theme=glass] .mobile-nav,:root[data-theme=glass] .body-layout>.assistant{background:#edf4f1;-webkit-backdrop-filter:none;backdrop-filter:none}
+  :root[data-theme=glass] .body-layout>.content,:root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project,:root[data-theme=glass] .chat-session-drawer,:root[data-theme=glass] .chat-context-popover{background:#f8fbfa;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){:root[data-theme=glass] *,:root[data-theme=glass] *::before,:root[data-theme=glass] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}:root[data-theme=glass] .capability-card:hover,:root[data-theme=glass] .module-card:hover,:root[data-theme=glass] .recent-project:hover{transform:none}}
+:root[data-theme=glass][data-motion=reduce] .capability-card:hover,:root[data-theme=glass][data-motion=reduce] .module-card:hover,:root[data-theme=glass][data-motion=reduce] .recent-project:hover{transform:none}
+@media(forced-colors:active){:root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project{border-color:CanvasText}:root[data-theme=glass] .nav button.active:before{background:Highlight}}
+
+/* Lenses belong to controls; reading surfaces stay quiet and opaque enough. */
+[data-liquid-defs]{position:fixed;pointer-events:none}
+:root[data-theme=glass] .body-layout>.content{background:#ffffff30}
+:root[data-theme=glass] .body-layout>.assistant,:root[data-theme=glass] .body-layout.chat-expanded>.assistant{background:#ffffff50}
+:root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar{background:#ffffff26;backdrop-filter:blur(8px) saturate(115%);-webkit-backdrop-filter:blur(8px) saturate(115%)}
+:root[data-theme=glass] .space-switch,:root[data-theme=glass] .global-search,:root[data-theme=glass] .nav button.active,:root[data-theme=glass] .assistant .chat-input,:root[data-theme=glass] .mobile-nav{
+  background:linear-gradient(var(--glass-light,135deg),#ffffff85 0%,#ffffff1a 38%,#ffffff40 78%,#ffffffa3 100%);
+  border:1px solid #ffffffb3;box-shadow:var(--glass-edge),var(--glass-shadow);
+  backdrop-filter:blur(3px) saturate(125%);-webkit-backdrop-filter:blur(3px) saturate(125%);
+}
+:root[data-theme=glass] .assistant .chat-input{border-radius:18px}
+:root[data-theme=glass] .assistant .chat-input textarea,:root[data-theme=glass] .assistant .chat-input .composer-toolbar,:root[data-theme=glass] .global-search input{background:transparent;border-color:transparent}
+:root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project{background:linear-gradient(135deg,#ffffff80,#ffffff40);box-shadow:var(--glass-edge),var(--glass-shadow)}
+:root[data-theme=glass] .capability-card:hover,:root[data-theme=glass] .module-card:hover,:root[data-theme=glass] .recent-project:hover{background:linear-gradient(135deg,#ffffffad,#ffffff66)}
+:root[data-theme=glass] .chat-session-drawer,:root[data-theme=glass] .chat-context-popover,:root[data-theme=glass] dialog{background:#f8fbfaf5}
+@supports not (backdrop-filter:blur(1px)){
+  :root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar,:root[data-theme=glass] .mobile-nav,:root[data-theme=glass] .assistant .chat-input{background:#f2f7f5}
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-theme=glass] .sidebar,:root[data-theme=glass] .topbar,:root[data-theme=glass] .mobile-nav,:root[data-theme=glass] .body-layout>.assistant,:root[data-theme=glass] .body-layout.chat-expanded>.assistant,:root[data-theme=glass] .body-layout>.content,:root[data-theme=glass] .space-switch,:root[data-theme=glass] .global-search,:root[data-theme=glass] .nav button.active,:root[data-theme=glass] .assistant .chat-input,:root[data-theme=glass] .capability-card,:root[data-theme=glass] .module-card,:root[data-theme=glass] .recent-project{background:#f8fbfa;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+@media(prefers-reduced-motion:reduce){:root[data-theme=glass] :is(.primary,.secondary,.send):active{transform:none}}
+:root[data-theme=glass][data-motion=reduce] :is(.primary,.secondary,.send):active{transform:none}

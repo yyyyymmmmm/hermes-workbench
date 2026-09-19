@@ -1,4 +1,5 @@
 window.HermesEnglish={
+"通透玻璃":"Clear glass",
 "微软 Fluent":"Microsoft Fluent",
 "关闭导航":"Close navigation",
 "运行记录":"Run history",

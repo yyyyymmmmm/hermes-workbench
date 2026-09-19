@@ -18,7 +18,7 @@ const assert=require('node:assert/strict'),{mkdtempSync,rmSync,mkdirSync}=requir
     for(const width of [390,360]){
       await page.setViewportSize({width,height:844});await page.locator('.mobile-nav [data-action=toggle-ai]').click();
       await page.locator('.chat-page').waitFor();const input=page.getByLabel('发送给 Hermes 的消息');await input.fill('Keep this draft');
-      for(const theme of ['classic','fluent','dark']){
+      for(const theme of ['classic','fluent','dark','glass']){
         await page.evaluate(theme=>I18n.set({theme}),theme);await page.getByRole('button',{name:'打开导航',exact:true}).click();
         await page.locator('.sidebar.open').waitFor();await page.waitForTimeout(260);
         assert.equal(await page.locator('.main-shell').evaluate(el=>el.inert),true);

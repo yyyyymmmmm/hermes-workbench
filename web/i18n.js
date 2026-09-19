@@ -1,6 +1,6 @@
 'use strict';
 window.I18n=(()=>{
-  const key='hermes.appearance.v1',themes=['classic','minimal','dark','blue','red','pink','fluent'];
+  const key='hermes.appearance.v1',themes=['classic','minimal','dark','blue','red','pink','fluent','glass'];
   let reloading=false,prefs={theme:'classic',locale:'zh-CN',motion:'system'};
   try{const saved=JSON.parse(localStorage.getItem(key)||'{}');if(themes.includes(saved.theme))prefs.theme=saved.theme;if(['zh-CN','en'].includes(saved.locale))prefs.locale=saved.locale;if(['system','reduce'].includes(saved.motion))prefs.motion=saved.motion;}catch{}
   function apply(){document.documentElement.dataset.theme=prefs.theme;document.documentElement.lang=prefs.locale;document.documentElement.dataset.motion=prefs.motion;document.documentElement.style.colorScheme=prefs.theme==='dark'?'dark':'light';}
